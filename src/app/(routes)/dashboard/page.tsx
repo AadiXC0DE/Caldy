@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { CalendarDays, CheckSquare, PlusCircle, Clock, BellRing } from 'lucide-react';
@@ -168,7 +168,7 @@ export default function DashboardPage() {
               <TabsTrigger value="priority">Priority</TabsTrigger>
             </TabsList>
             
-            <Card className="h-full">
+            <Card className="h-full flex flex-col">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
                   <CheckSquare className="h-5 w-5 mr-2 text-primary" />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               
-              <CardContent>
+              <CardContent className="flex-grow">
                 <TabsContent value="today" className="h-[50vh] overflow-auto mt-0">
                   {dueTodayTasks.length === 0 ? (
                     <div className="py-10 text-center">
@@ -211,15 +211,16 @@ export default function DashboardPage() {
                     <TaskList tasks={highPriorityTasks} />
                   )}
                 </TabsContent>
-                
-                <div className="pt-3 text-right">
+              </CardContent>
+              <CardFooter className="pt-0 mt-auto">
+                <div className="w-full text-right">
                   <Button asChild variant="outline" size="sm">
                     <Link href="/tasks">
                       View All Tasks
                     </Link>
                   </Button>
                 </div>
-              </CardContent>
+              </CardFooter>
             </Card>
           </Tabs>
         </motion.div>
