@@ -63,7 +63,19 @@ const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
   
   try {
     const storedValue = localStorage.getItem(key);
-    return storedValue ? JSON.parse(storedValue) : defaultValue;
+    if (!storedValue) return defaultValue;
+    
+    // Parse the JSON and convert date strings back to Date objects
+    const parsedValue = JSON.parse(storedValue, (key, value) => {
+      // Check if the value looks like an ISO date string
+      if (typeof value === 'string' && 
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
+        return new Date(value);
+      }
+      return value;
+    });
+    
+    return parsedValue;
   } catch (error) {
     console.error(`Error loading ${key} from localStorage:`, error);
     return defaultValue;

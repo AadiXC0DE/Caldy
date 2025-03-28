@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Tag, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Tag, Trash2, BarChart3 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Priority } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -249,21 +249,16 @@ export default function TaskDetailDialog({
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem 
-                          key={category.id} 
-                          value={category.id}
-                          className="flex items-center"
-                        >
-                          <div 
-                            className="w-3 h-3 rounded-full mr-2" 
-                            style={{ backgroundColor: category.color }}
-                          />
-                          {category.name}
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center">
+                            <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: category.color }}></div>
+                            {category.name}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -277,90 +272,76 @@ export default function TaskDetailDialog({
               control={form.control}
               name="completed"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                <FormItem className="flex items-center space-x-2 space-y-0">
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
+                    <Checkbox 
+                      checked={field.value} 
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">Mark as completed</FormLabel>
+                  <FormLabel className="cursor-pointer">Mark as completed</FormLabel>
                 </FormItem>
               )}
             />
 
-            <div className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-              <Checkbox
-                checked={showProgress}
-                onCheckedChange={(checked) => setShowProgress(!!checked)}
-              />
-              <label className="font-normal cursor-pointer" onClick={() => setShowProgress(!showProgress)}>
-                Track progress
-              </label>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <div className="text-sm font-medium">Progress Tracking</div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setShowProgress(!showProgress)}
+                  className="h-7 px-2"
+                >
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  {showProgress ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+
+              {showProgress && (
+                <FormField
+                  control={form.control}
+                  name="progress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>0%</span>
+                        <span>{field.value}%</span>
+                        <span>100%</span>
+                      </div>
+                      <FormControl>
+                        <Slider
+                          defaultValue={[field.value || 0]}
+                          max={100}
+                          step={5}
+                          onValueChange={(values) => field.onChange(values[0])}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
-            <AnimatePresence>
-              {showProgress && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <FormField
-                    control={form.control}
-                    name="progress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Progress: {field.value}%</FormLabel>
-                        <FormControl>
-                          <Slider
-                            min={0}
-                            max={100}
-                            step={5}
-                            value={[field.value || 0]}
-                            onValueChange={(values: number[]) => field.onChange(values[0])}
-                            className="py-4"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div>
-              <FormLabel>Tags</FormLabel>
-              <div className="flex flex-wrap gap-2 mt-2 border rounded-md p-3">
-                {tags.map((tag) => (
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Tags</div>
+              <div className="flex flex-wrap gap-2">
+                {tags.map(tag => (
                   <Badge
                     key={tag.id}
                     variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
                     className="cursor-pointer"
                     onClick={() => toggleTag(tag.id)}
                   >
-                    <Tag className="h-3 w-3 mr-1" />
                     {tag.name}
                   </Badge>
                 ))}
-                {tags.length === 0 && (
-                  <div className="text-sm text-muted-foreground">No tags available</div>
-                )}
               </div>
             </div>
 
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
               <Button type="submit">
-                {task ? 'Update' : 'Create'} Task
+                {task ? 'Update Task' : 'Create Task'}
               </Button>
             </DialogFooter>
           </form>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Event } from '@/lib/types';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
+import AddEventDialog from './AddEventDialog';
 
 export default function CalendarView() {
   const { 
@@ -23,6 +24,9 @@ export default function CalendarView() {
   } = useApp();
   
   const calendarRef = useRef<FullCalendar>(null);
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [defaultDate, setDefaultDate] = useState<Date>(new Date());
   
   // Effect to update calendar view when view changes
   useEffect(() => {
@@ -85,35 +89,24 @@ export default function CalendarView() {
     });
   
   const handleDateClick = (arg: any) => {
-    // Open event creation with this date
+    // Open event creation dialog with this date
     const startDate = new Date(arg.date);
-    const endDate = new Date(startDate);
-    endDate.setHours(startDate.getHours() + 1);
-    
-    // You would normally open a modal here - for now we'll just add a placeholder event
-    const newEvent: Omit<Event, 'id'> = {
-      title: 'New Event',
-      start: startDate,
-      end: endDate,
-      allDay: arg.allDay,
-    };
-    
-    addEvent(newEvent);
-    toast.success('Event added! Click to edit details.');
+    setDefaultDate(startDate);
+    setSelectedEventId(null);
+    setIsAddEventOpen(true);
   };
   
   const handleEventClick = (arg: any) => {
-    // Open event editing dialog
-    const eventId = arg.event.id;
-    
     // If it's a task event, handle differently
     if (arg.event.extendedProps.isTask) {
       toast.info('This is a task with due date. Edit in Tasks tab.');
       return;
     }
     
-    // You would normally open a modal here
-    toast.info('Edit event: ' + arg.event.title);
+    // Open event editing dialog
+    const eventId = arg.event.id;
+    setSelectedEventId(eventId);
+    setIsAddEventOpen(true);
   };
   
   const handleEventDrop = (arg: any) => {
@@ -187,6 +180,12 @@ export default function CalendarView() {
             }
           }
         }}
+      />
+      <AddEventDialog 
+        open={isAddEventOpen} 
+        onOpenChange={setIsAddEventOpen}
+        defaultDate={defaultDate}
+        editEvent={selectedEventId ? events.find(e => e.id === selectedEventId) : undefined}
       />
     </div>
   );

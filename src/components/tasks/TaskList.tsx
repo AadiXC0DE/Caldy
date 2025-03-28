@@ -145,7 +145,7 @@ export default function TaskList({ tasks }: TaskListProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
             transition={{ duration: 0.2 }}
-            className={`py-3 px-4 ${task.completed ? 'bg-muted/50' : ''}`}
+            className={`py-3 px-4 ${task.completed ? 'bg-muted/30' : ''}`}
           >
             <Collapsible
               open={expandedTasks[task.id]}

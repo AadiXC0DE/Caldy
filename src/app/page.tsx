@@ -14,14 +14,20 @@ export default function Home() {
       <header className="relative overflow-hidden bg-background text-foreground">
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-background/0"></div>
         <div className="container mx-auto px-4 pt-20 pb-24 sm:pt-24 sm:pb-32">
-          <nav className="flex items-center justify-between mb-16">
+          <nav className="flex items-center justify-between mb-16 rounded-xl border p-3 bg-card/80 backdrop-blur-sm shadow-sm">
             <div className="flex items-center">
               <CalendarDays className="h-7 w-7 mr-2 text-primary" />
               <span className="text-2xl font-bold">Caldy</span>
             </div>
             <div className="hidden sm:flex space-x-6">
-              <Link href="/features" className="hover:text-primary transition-colors">Features</Link>
-              <Link href="/about" className="hover:text-primary transition-colors">About</Link>
+              <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1">
+                <CalendarDays className="h-4 w-4" />
+                Calendar
+              </Link>
+              <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1">
+                <CheckSquare className="h-4 w-4" />
+                Tasks
+              </Link>
             </div>
             <Button asChild variant="default" className="shadow-sm">
               <Link href="/calendar">
@@ -49,7 +55,7 @@ export default function Home() {
                   <Link href="/calendar">Try Caldy Now</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link href="/features">Explore Features</Link>
+                  <Link href="/calendar">Explore Features</Link>
                 </Button>
               </div>
             </motion.div>
@@ -68,9 +74,9 @@ export default function Home() {
                       <span className="font-medium">Calendar View</span>
                     </div>
                     <div className="flex space-x-2">
-                      <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                      <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-                      <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                      <div className="h-3 w-3 rounded-full bg-accent"></div>
+                      <div className="h-3 w-3 rounded-full bg-secondary"></div>
+                      <div className="h-3 w-3 rounded-full bg-primary"></div>
                     </div>
                   </div>
                   <div className="grid grid-cols-7 text-center text-xs font-medium py-2 border-b">
@@ -83,17 +89,34 @@ export default function Home() {
                       const isCurrentMonth = i >= 4 && i < 34;
                       const isToday = i === 15;
                       const hasEvent = [10, 15, 22, 27].includes(i);
+                      const specialEvent = i === 10 ? "Meeting with Team" : 
+                                          i === 15 ? "Lunch with Client" : 
+                                          i === 22 ? "Project Deadline" : 
+                                          i === 27 ? "Doctor's Appointment" : "";
                       
                       return (
                         <div 
                           key={i} 
-                          className={`py-2 relative ${isCurrentMonth ? '' : 'text-muted-foreground text-opacity-40'} ${isToday ? 'bg-primary/10' : ''}`}
+                          className={`py-2 relative ${isCurrentMonth ? '' : 'text-muted-foreground/40'} ${isToday ? 'bg-primary/10' : ''}`}
                         >
                           <span className={`flex items-center justify-center h-8 w-8 mx-auto ${isToday ? 'bg-primary text-primary-foreground rounded-full' : ''}`}>
                             {i - 4 <= 0 ? i + 27 : i - 4 > 30 ? i - 34 : i - 4}
                           </span>
                           {hasEvent && (
-                            <div className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1 w-1 rounded-full ${i === 15 ? 'bg-blue-400' : i === 10 ? 'bg-green-400' : i === 22 ? 'bg-purple-400' : 'bg-amber-400'}`}></div>
+                            <>
+                              <div className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 rounded-full ${
+                                i === 15 ? 'bg-primary' : 
+                                i === 10 ? 'bg-accent' : 
+                                i === 22 ? 'bg-secondary' : 
+                                'bg-chart-5'
+                              }`}></div>
+                              {i === 15 && (
+                                <div className="absolute top-full left-0 right-0 z-10 bg-card p-2 rounded-md shadow-lg border text-xs text-left mr-1 ml-1 mt-1 opacity-90">
+                                  <div className="font-medium">{specialEvent}</div>
+                                  <div className="text-muted-foreground text-[10px]">12:00 PM - 1:30 PM</div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       );
@@ -101,6 +124,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+              
+              {/* Add floating decoration elements */}
+              <div className="absolute -top-6 -right-6 h-12 w-12 rounded-lg bg-accent/20 rotate-12"></div>
+              <div className="absolute -bottom-6 -left-6 h-12 w-12 rounded-lg bg-primary/20 -rotate-12"></div>
             </motion.div>
           </div>
         </div>
