@@ -212,28 +212,27 @@ export default function DashboardPage() {
                   )}
                 </TabsContent>
               </CardContent>
-              <CardFooter className="pt-0 mt-auto">
-                <div className="w-full text-right">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/tasks">
-                      View All Tasks
-                    </Link>
-                  </Button>
-                </div>
+              
+              <CardFooter className="pt-0">
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <Link href="/tasks">
+                    View All Tasks
+                  </Link>
+                </Button>
               </CardFooter>
             </Card>
           </Tabs>
         </motion.div>
       </div>
       
-      <AddEventDialog 
-        open={isAddEventOpen} 
-        onOpenChange={setIsAddEventOpen} 
+      <AddEventDialog
+        open={isAddEventOpen}
+        onOpenChange={setIsAddEventOpen}
       />
       
-      <AddTaskDialog 
-        open={isAddTaskOpen} 
-        onOpenChange={setIsAddTaskOpen} 
+      <AddTaskDialog
+        open={isAddTaskOpen}
+        onOpenChange={setIsAddTaskOpen}
       />
     </div>
   );
