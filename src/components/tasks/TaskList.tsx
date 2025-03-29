@@ -169,14 +169,25 @@ export default function TaskList({ tasks }: TaskListProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
             transition={{ duration: 0.2 }}
-            className={`py-3 px-4 ${task.completed ? 'bg-muted/30' : ''}`}
+            className={`py-3 px-4 ${task.completed ? '' : ''} group`}
+            whileHover={{ 
+              backgroundColor: 'rgba(var(--card-foreground-rgb), 0.03)', 
+              transition: { duration: 0.15 } 
+            }}
           >
             <Collapsible
               open={expandedTasks[task.id]}
               onOpenChange={() => toggleExpanded(task.id)}
             >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5">
+              <div 
+                className="flex items-start gap-3 cursor-pointer relative"
+                onClick={(e) => {
+                  if (!(e.target as HTMLElement).closest('.task-checkbox')) {
+                    toggleExpanded(task.id);
+                  }
+                }}
+              >
+                <div className="mt-0.5 task-checkbox" onClick={(e) => e.stopPropagation()}>
                   <Checkbox 
                     checked={task.completed}
                     onCheckedChange={(checked) => 
@@ -191,18 +202,21 @@ export default function TaskList({ tasks }: TaskListProps) {
                     <div className="flex-grow">
                       <h3 
                         className={`text-base font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                        onClick={() => handleOpenDetails(task)}
                       >
                         {task.title}
                       </h3>
                       
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {task.dueDate && (
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {format(new Date(task.dueDate), 'MMM d, yyyy')}
-                          </div>
-                        )}
+                      <div className="flex flex-wrap items-center mt-1">
+                        <div className="flex items-center text-xs text-muted-foreground w-28 mr-1">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {task.dueDate 
+                            ? format(new Date(task.dueDate), 'MMM d, yyyy')
+                            : 'No date'}
+                        </div>
+                        
+                        <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs mr-2">
+                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                        </Badge>
                         
                         {task.categoryId && (
                           <div 
@@ -215,82 +229,117 @@ export default function TaskList({ tasks }: TaskListProps) {
                             {categories.find(c => c.id === task.categoryId)?.name}
                           </div>
                         )}
-                        
-                        <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs">
-                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                        </Badge>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          {expandedTasks[task.id] ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </CollapsibleTrigger>
+                    <div className="flex items-center">
+                      <motion.div
+                        whileHover={{ rotate: expandedTasks[task.id] ? 0 : 90 }}
+                        animate={{ rotate: expandedTasks[task.id] ? 180 : 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      </motion.div>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <CollapsibleContent>
-                <div className="pl-8 pt-2 space-y-3">
-                  {task.description && (
-                    <p className="text-sm text-muted-foreground">
-                      {task.description}
-                    </p>
-                  )}
-                  
-                  {task.progress !== undefined && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Progress</span>
-                        <span>{task.progress}%</span>
+              <AnimatePresence>
+                {expandedTasks[task.id] && (
+                  <CollapsibleContent forceMount>
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ 
+                        opacity: 1, 
+                        height: 'auto',
+                        transition: { 
+                          height: { duration: 0.3, ease: "easeOut" },
+                          opacity: { duration: 0.2, delay: 0.1 }
+                        }
+                      }}
+                      exit={{ 
+                        opacity: 0, 
+                        height: 0,
+                        transition: { 
+                          height: { duration: 0.3, ease: "easeIn" },
+                          opacity: { duration: 0.2 }
+                        }
+                      }}
+                      className="pt-3 space-y-3 overflow-hidden"
+                    >
+                      <div className="pl-8">
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {task.description}
+                          </p>
+                        )}
+                        
+                        {task.progress !== undefined && (
+                          <div className="space-y-1 mt-3">
+                            <div className="flex justify-between text-xs">
+                              <span>Progress</span>
+                              <span>{task.progress}%</span>
+                            </div>
+                            <Progress value={task.progress} className="h-2" />
+                          </div>
+                        )}
+                        
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {task.tags.map(tagId => {
+                              const tag = tags.find(t => t.id === tagId);
+                              return tag ? (
+                                <Badge key={tagId} variant="outline" className="text-xs">
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  {tag.name}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
-                      <Progress value={task.progress} className="h-2" />
-                    </div>
-                  )}
-                  
-                  {task.tags && task.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {task.tags.map(tagId => {
-                        const tag = tags.find(t => t.id === tagId);
-                        return tag ? (
-                          <Badge key={tagId} variant="outline" className="text-xs">
-                            <Tag className="h-3 w-3 mr-1" />
-                            {tag.name}
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-end pt-2 gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8"
-                      onClick={() => handleOpenDetails(task)}
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="h-8"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </CollapsibleContent>
+                      
+                      {/* Improved action buttons layout */}
+                      <div className="mt-4 border-t pt-3">
+                        <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
+                          <motion.div 
+                            whileHover={{ scale: 1.03 }} 
+                            whileTap={{ scale: 0.97 }}
+                            className="col-span-1 md:w-auto"
+                          >
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="w-full md:w-auto md:px-4 bg-background hover:bg-secondary transition-all duration-200"
+                              onClick={() => handleOpenDetails(task)}
+                            >
+                              <Edit className="h-3.5 w-3.5 mr-1.5" />
+                              Edit
+                            </Button>
+                          </motion.div>
+                          
+                          <motion.div 
+                            whileHover={{ scale: 1.03 }} 
+                            whileTap={{ scale: 0.97 }}
+                            className="col-span-1 md:w-auto md:ml-2"
+                          >
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              className="w-full md:w-auto md:px-4 hover:bg-red-600 transition-all duration-200"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                              Delete
+                            </Button>
+                          </motion.div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </CollapsibleContent>
+                )}
+              </AnimatePresence>
             </Collapsible>
           </motion.div>
         ))}
