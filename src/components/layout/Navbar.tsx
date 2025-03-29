@@ -4,15 +4,28 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, CheckSquare, Settings, Sun, Moon, LayoutDashboard } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { 
+  CalendarDays, 
+  CheckSquare, 
+  Settings, 
+  Sun, 
+  Moon, 
+  LayoutDashboard,
+  X,
+  CalendarPlus,
+  ListPlus 
+} from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { AddNew } from './AddNew';
+import { motion } from 'framer-motion';
+import { Separator } from '@/components/ui/separator';
 
 export function Navbar() {
   const pathname = usePathname();
   const { darkMode, toggleDarkMode } = useApp();
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   
   const isActive = (path: string) => pathname === path;
   
@@ -69,7 +82,7 @@ export function Navbar() {
           variant="outline"
           size="icon"
           onClick={toggleDarkMode}
-          className="rounded-full"
+          className="rounded-full hidden sm:flex"
         >
           {darkMode ? (
             <Sun className="h-5 w-5" />
@@ -79,11 +92,13 @@ export function Navbar() {
           <span className="sr-only">Toggle dark mode</span>
         </Button>
         
-        <AddNew />
+        <div className="hidden sm:block">
+          <AddNew />
+        </div>
         
         {/* Mobile Navigation */}
         <div className="md:hidden">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="rounded-full">
                 <svg
@@ -103,21 +118,118 @@ export function Navbar() {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent>
-              <div className="flex flex-col space-y-4 mt-6">
-                {navItems.map((item) => (
-                  <Button
-                    key={item.path}
-                    asChild
-                    variant={isActive(item.path) ? 'default' : 'ghost'}
-                    className="justify-start"
-                  >
-                    <Link href={item.path} className="flex items-center">
-                      {item.icon}
-                      {item.name}
-                    </Link>
-                  </Button>
-                ))}
+            <SheetContent side="right" className="w-[85%] p-0 border-l">
+              <div className="flex flex-col h-full">
+                {/* Header */}
+                <div className="p-4 border-b flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CalendarDays className="h-6 w-6 mr-2 text-primary" />
+                    <h2 className="text-xl font-semibold">Caldy</h2>
+                  </div>
+                </div>
+                
+                {/* Navigation items */}
+                <div className="px-2 py-4 flex-1 overflow-auto">
+                  <div className="space-y-1">
+                    {navItems.map((item, index) => (
+                      <motion.div
+                        key={item.path}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ 
+                          duration: 0.3, 
+                          delay: index * 0.1,
+                          ease: "easeOut" 
+                        }}
+                      >
+                        <SheetClose asChild>
+                          <Button
+                            asChild
+                            variant={isActive(item.path) ? 'default' : 'ghost'}
+                            className="w-full justify-start mb-1"
+                            size="lg"
+                          >
+                            <Link href={item.path} className="flex items-center">
+                              {item.icon}
+                              {item.name}
+                            </Link>
+                          </Button>
+                        </SheetClose>
+                      </motion.div>
+                    ))}
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-muted-foreground px-3 py-1">
+                      Quick Actions
+                    </h3>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.4 }}
+                    >
+                      <SheetClose asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start mb-2"
+                          asChild
+                        >
+                          <Link href="/calendar?new=event">
+                            <CalendarPlus className="h-5 w-5 mr-2" />
+                            New Event
+                          </Link>
+                        </Button>
+                      </SheetClose>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.5 }}
+                    >
+                      <SheetClose asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          asChild
+                        >
+                          <Link href="/tasks?new=task">
+                            <ListPlus className="h-5 w-5 mr-2" />
+                            New Task
+                          </Link>
+                        </Button>
+                      </SheetClose>
+                    </motion.div>
+                  </div>
+                </div>
+                
+                {/* Footer */}
+                <div className="p-4 border-t mt-auto">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Theme</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="gap-2" 
+                      onClick={toggleDarkMode}
+                    >
+                      {darkMode ? (
+                        <>
+                          <Sun className="h-4 w-4" />
+                          <span className="text-sm">Light Mode</span>
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="h-4 w-4" />
+                          <span className="text-sm">Dark Mode</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
