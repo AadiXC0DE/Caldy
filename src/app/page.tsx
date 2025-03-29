@@ -276,7 +276,7 @@ export default function Home() {
                 className={`bg-card border rounded-xl p-6 relative overflow-hidden group cursor-pointer`}
               >
                 <motion.div 
-                  className={`absolute inset-0 opacity-0 ${feature.color} group-hover:opacity-100 transition-opacity duration-500 z-0`}
+                  className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0`}
                   initial={{ opacity: 0 }}
                   whileHover={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
