@@ -92,12 +92,12 @@ export default function DashboardPage() {
                 Today's Schedule
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col h-full">
               <div className="h-[40vh]">
                 <CalendarView />
               </div>
               
-              <div className="mt-5 space-y-3">
+              <div className="mt-5 space-y-3 flex-grow">
                 <h3 className="text-sm font-medium text-muted-foreground">
                   Today, {format(today, 'EEEE, MMMM d')}
                 </h3>
@@ -143,14 +143,14 @@ export default function DashboardPage() {
                     })}
                   </div>
                 )}
-                
-                <div className="pt-3 text-right">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/calendar">
-                      View Full Calendar
-                    </Link>
-                  </Button>
-                </div>
+              </div>
+              
+              <div className="mt-auto pt-3 text-right">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/calendar">
+                    View Full Calendar
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

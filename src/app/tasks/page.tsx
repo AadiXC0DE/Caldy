@@ -87,7 +87,7 @@ export default function TasksPage() {
           />
         </div>
         
-        <div className="flex flex-wrap sm:flex-nowrap gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-nowrap gap-2">
           <Select value={filterPriority} onValueChange={(value) => setFilterPriority(value as Priority | 'all')}>
             <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="Priority" />
@@ -115,7 +115,7 @@ export default function TasksPage() {
           </Select>
           
           <Select value={filterCompleted} onValueChange={(value) => setFilterCompleted(value as 'all' | 'completed' | 'incomplete')}>
-            <SelectTrigger className="w-full sm:w-36">
+            <SelectTrigger className="w-full col-span-2 sm:col-span-1 sm:w-36">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
