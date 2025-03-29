@@ -616,31 +616,83 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 sm:mb-0">
-              <motion.div
-                whileHover={{ rotate: 15, scale: 1.2 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              >
-                <CalendarDays className="h-5 w-5 mr-2 text-primary" />
-              </motion.div>
-              <span className="font-bold">Caldy</span>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Caldy. Made with{' '}
-              <motion.span
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="inline-block"
-              >
-                ❤️
-              </motion.span>
-            </div>
-          </div>
-        </div>
-      </footer>
+{/* Footer */}
+<footer className="py-12 border-t relative overflow-hidden">
+  <div className="absolute inset-0 z-0 bg-gradient-to-t from-primary/5 to-transparent opacity-40"></div>
+  <div className="container mx-auto px-4 relative z-10">
+    <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+      <div className="flex items-center mb-4 sm:mb-0">
+        <motion.div
+          whileHover={{ rotate: 15, scale: 1.2 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+        </motion.div>
+        <span className="font-bold">Caldy</span>
+      </div>
+      
+      <div className="flex items-center space-x-4">
+        <motion.a 
+          href="https://github.com/AadiXC0DE/Caldy" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-primary transition-colors"
+          whileHover={{ scale: 1.1 }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-github">
+            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+            <path d="M9 18c-4.51 2-5-2-7-2"></path>
+          </svg>
+          <span className="sr-only">GitHub</span>
+        </motion.a>
+      </div>
+    </div>
+    
+    <div className="flex flex-col sm:flex-row justify-between items-center pt-2 border-t border-primary/10">
+      <div className="text-sm text-muted-foreground mb-2 sm:mb-0">
+        © {new Date().getFullYear()} Caldy. <span className="text-xs bg-primary/10 rounded-full px-2 py-0.5 ml-1">Open Source</span>
+      </div>
+      
+      <div className="text-sm text-muted-foreground flex items-center">
+        Made with{' '}
+        <motion.span
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="inline-block mx-1"
+        >
+          ❤️
+        </motion.span>
+        {' '}by <motion.a 
+          href="https://github.com/AadiXC0DE" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium hover:text-primary transition-colors ml-1 border-b border-dashed border-primary/30"
+          whileHover={{ y: -1 }}
+        >
+          Aaditya
+        </motion.a>
+      </div>
+    </div>
+  </div>
+  
+  {/* Decorative elements */}
+  <motion.div 
+    className="absolute bottom-0 left-1/4 w-24 h-24 rounded-full bg-primary/5 -z-10"
+    animate={{ 
+      y: [0, -15, 0],
+      opacity: [0.2, 0.3, 0.2] 
+    }}
+    transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+  />
+  <motion.div 
+    className="absolute top-0 right-1/3 w-16 h-16 rounded-full bg-primary/5 -z-10"
+    animate={{ 
+      y: [0, 10, 0],
+      opacity: [0.1, 0.2, 0.1] 
+    }}
+    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+  />
+</footer>
     </div>
   );
 }
