@@ -88,13 +88,20 @@ export function Navbar() {
             variant="outline"
             size="icon"
             onClick={toggleDarkMode}
-            className="rounded-full hidden sm:flex"
+            className="rounded-full hidden sm:flex relative overflow-hidden"
           >
-            {darkMode ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
+            <motion.div
+              initial={false}
+              animate={{ rotate: darkMode ? 0 : 180 }}
+              transition={{ duration: 0.5, type: "spring" }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              {darkMode ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
+            </motion.div>
             <span className="sr-only">Toggle dark mode</span>
           </Button>
         )}
@@ -221,20 +228,27 @@ export function Navbar() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="gap-2" 
+                        className="gap-2 relative" 
                         onClick={toggleDarkMode}
                       >
-                        {darkMode ? (
-                          <>
+                        <motion.div
+                          initial={false}
+                          animate={{ 
+                            rotate: darkMode ? 0 : 180,
+                            x: darkMode ? 0 : -4
+                          }}
+                          transition={{ duration: 0.5, type: "spring" }}
+                          className="flex items-center justify-center"
+                        >
+                          {darkMode ? (
                             <Sun className="h-4 w-4" />
-                            <span className="text-sm">Light Mode</span>
-                          </>
-                        ) : (
-                          <>
+                          ) : (
                             <Moon className="h-4 w-4" />
-                            <span className="text-sm">Dark Mode</span>
-                          </>
-                        )}
+                          )}
+                        </motion.div>
+                        <span className="text-sm ml-2">
+                          {darkMode ? "Dark Mode" : "Light Mode"}
+                        </span>
                       </Button>
                     )}
                   </div>
