@@ -247,12 +247,12 @@ export default function CalendarView({ showHeader = true }) {
             }
             
             // Add style for iCal events
-            if (arg.event.extendedProps.isIcalEvent) {
-              arg.el.classList.add('ical-event');
-              const dot = document.createElement('span');
-              dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
-              arg.el.appendChild(dot);
-            }
+            // if (arg.event.extendedProps.isIcalEvent) {
+            //   arg.el.classList.add('ical-event');
+            //   const dot = document.createElement('span');
+            //   dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
+            //   arg.el.appendChild(dot);
+            // }
           }}
         />
       </div>
