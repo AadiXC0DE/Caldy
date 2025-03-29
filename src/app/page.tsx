@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
 import { CalendarDays, CheckSquare, Clock, Palette, Moon, Sun, ArrowRight, BellRing, Repeat, ArrowDownUp } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { TypewriterEffect } from '@/components/TypewriterEffect';
@@ -13,10 +13,35 @@ import { TypewriterEffectSmooth } from '@/components/TypewriterEffect';
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [activeDay, setActiveDay] = useState(15); // Default to "today" in the demo
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const cursorRef = useRef(null);
+  
+  // Cursor animation values
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+  
+  // Create spring animations for smoother cursor movement
+  const springConfig = { damping: 25, stiffness: 150 };
+  const cursorXSpring = useSpring(cursorX, springConfig);
+  const cursorYSpring = useSpring(cursorY, springConfig);
 
   // After mounting, we can access the theme
   useEffect(() => {
     setMounted(true);
+    
+    // Update cursor position on mouse move
+    const handleMouseMove = (e) => {
+      cursorX.set(e.clientX - 16); 
+      cursorY.set(e.clientY - 16);
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -24,37 +49,78 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Custom cursor follow element */}
+      <motion.div
+        ref={cursorRef}
+        className="hidden md:block fixed w-8 h-8 rounded-full border-2 border-primary pointer-events-none z-50 mix-blend-difference"
+        style={{
+          x: cursorXSpring,
+          y: cursorYSpring,
+        }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 0.4, scale: 1 }}
+        transition={{ duration: 0.2 }}
+      />
+      
+      {/* Mouse follower gradient */}
+      <div 
+        className="hidden md:block fixed w-[300px] h-[300px] rounded-full bg-gradient-to-r from-primary/10 to-primary/5 blur-3xl pointer-events-none z-10 opacity-40"
+        style={{
+          left: mousePosition.x - 150,
+          top: mousePosition.y - 150,
+          transition: 'left 0.8s cubic-bezier(0.2, 1, 0.3, 1), top 0.8s cubic-bezier(0.2, 1, 0.3, 1)'
+        }}
+      />
+      
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-background text-foreground">
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-background/0"></div>
         <div className="container mx-auto px-4 pt-20 pb-24 sm:pt-24 sm:pb-32">
           <nav className="flex items-center justify-between mb-16 rounded-xl border p-3 bg-card/80 backdrop-blur-sm shadow-sm">
             <div className="flex items-center">
-              <CalendarDays className="h-7 w-7 mr-2 text-primary" />
+              <motion.div
+                whileHover={{ rotate: [0, -10, 10, -5, 0], scale: 1.1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <CalendarDays className="h-7 w-7 mr-2 text-primary" />
+              </motion.div>
               <span className="text-2xl font-bold">Caldy</span>
             </div>
             <div className="hidden sm:flex space-x-6 items-center">
-              <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1">
-                <CalendarDays className="h-4 w-4" />
-                Calendar
+              <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1 group">
+                <CalendarDays className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                <span className="relative">
+                  Calendar
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+                </span>
               </Link>
-              <Link href="/tasks" className="hover:text-primary transition-colors flex items-center gap-1">
-                <CheckSquare className="h-4 w-4" />
-                Tasks
+              <Link href="/tasks" className="hover:text-primary transition-colors flex items-center gap-1 group">
+                <CheckSquare className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                <span className="relative">
+                  Tasks
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></span>
+                </span>
               </Link>
               {mounted && (
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={toggleTheme}
-                  className="rounded-full"
+                  className="rounded-full relative overflow-hidden"
                 >
-                  {theme === 'dark' ? (
-                    <Sun className="h-5 w-5" />
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: theme === 'dark' ? 0 : 180 }}
+                    transition={{ duration: 0.5, type: "spring" }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    {theme === 'dark' ? (
+                      <Moon className="h-5 w-5" />
+                    ) : (
+                      <Sun className="h-5 w-5" />
+                    )}
+                  </motion.div>
                   <span className="sr-only">Toggle dark mode</span>
                 </Button>
               )}
@@ -65,13 +131,20 @@ export default function Home() {
                   variant="outline"
                   size="icon"
                   onClick={toggleTheme}
-                  className="rounded-full sm:hidden mr-2"
+                  className="rounded-full sm:hidden mr-2 relative overflow-hidden"
                 >
-                  {theme === 'dark' ? (
-                    <Sun className="h-5 w-5" />
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: theme === 'dark' ? 0 : 180 }}
+                    transition={{ duration: 0.5, type: "spring" }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    {theme === 'dark' ? (
+                      <Moon className="h-5 w-5" />
+                    ) : (
+                      <Sun className="h-5 w-5" />
+                    )}
+                  </motion.div>
                 </Button>
               )}
               <Button asChild variant="default" className="shadow-sm">
@@ -107,11 +180,27 @@ export default function Home() {
                 Caldy combines a stunning calendar interface with powerful task management to help you organize your life beautifully.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button asChild size="lg" className="shadow-lg">
-                  <Link href="/calendar">Try Caldy Now</Link>
+                <Button asChild size="lg" className="shadow-lg relative overflow-hidden group">
+                  <Link href="/calendar">
+                    <span className="relative z-10">Try Caldy Now</span>
+                    <motion.div 
+                      className="absolute inset-0 bg-primary-foreground/10 z-0" 
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: 0 }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link href="/calendar">Explore Features</Link>
+                <Button asChild variant="outline" size="lg" className="group relative overflow-hidden">
+                  <Link href="/calendar">
+                    <span className="relative z-10 group-hover:text-primary transition-colors">Explore Features</span>
+                    <motion.div 
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary z-0" 
+                      initial={{ scaleX: 0 }}
+                      whileHover={{ scaleX: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </Link>
                 </Button>
               </div>
             </motion.div>
@@ -121,69 +210,146 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
               className="relative"
+              whileHover={{ scale: 1.02 }}
             >
               <div className="w-full aspect-square md:aspect-[4/3] rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-background p-1 shadow-xl">
                 <div className="h-full w-full rounded-lg bg-card overflow-hidden border shadow-sm">
                   <div className="bg-primary/10 p-4 flex items-center justify-between border-b">
                     <div className="flex items-center">
-                      <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+                      <motion.div 
+                        animate={{ rotate: [0, 0, 5, 0, -5, 0] }} 
+                        transition={{ duration: 3, repeat: Infinity, repeatDelay: 5 }}
+                      >
+                        <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+                      </motion.div>
                       <span className="font-medium">Calendar View</span>
                     </div>
                     <div className="flex space-x-2">
-                      <div className="h-3 w-3 rounded-full bg-green-200 dark:bg-accent"></div>
-                      <div className="h-3 w-3 rounded-full bg-purple-200 dark:bg-purple-800"></div>
-                      <div className="h-3 w-3 rounded-full bg-primary dark:bg-primary"></div>
+                      <motion.div 
+                        className="h-3 w-3 rounded-full bg-green-200 dark:bg-accent"
+                        whileHover={{ scale: 1.2 }}
+                      ></motion.div>
+                      <motion.div 
+                        className="h-3 w-3 rounded-full bg-purple-200 dark:bg-purple-800"
+                        whileHover={{ scale: 1.2 }}
+                      ></motion.div>
+                      <motion.div 
+                        className="h-3 w-3 rounded-full bg-primary dark:bg-primary"
+                        whileHover={{ scale: 1.2 }}
+                      ></motion.div>
                     </div>
                   </div>
                   <div className="grid grid-cols-7 text-center text-xs font-medium py-2 border-b">
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                      <div key={day} className="py-1">{day}</div>
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, idx) => (
+                      <motion.div 
+                        key={day} 
+                        className="py-1"
+                        whileHover={{ scale: 1.15, color: 'var(--primary)' }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {day}
+                      </motion.div>
                     ))}
                   </div>
                   <div className="grid grid-cols-7 text-center text-sm">
                     {[...Array(35)].map((_, i) => {
                       const isCurrentMonth = i >= 4 && i < 34;
                       const isToday = i === 15;
-                      const hasEvent = [10, 15, 22, 27].includes(i);
+                      const hasEvent = [10, 15, 27].includes(i);
                       const specialEvent = i === 10 ? "Meeting with Team" : 
                                           i === 15 ? "Lunch with Client" : 
-                                          i === 22 ? "Project Deadline" : 
                                           i === 27 ? "Doctor's Appointment" : "";
+                      const isHovered = activeDay === i;
                       
                       return (
-                        <div 
+                        <motion.div 
                           key={i} 
-                          className={`py-2 relative ${isCurrentMonth ? '' : 'text-muted-foreground/40'} ${isToday ? '' : ''}`}
+                          className={`py-2 relative cursor-pointer ${isCurrentMonth ? '' : 'text-muted-foreground/40'} ${isToday ? '' : ''}`}
+                          onHoverStart={() => setActiveDay(i)}
+                          whileHover={{ scale: (hasEvent && isHovered) || isToday ? 1 : 1.1 }}
+                          transition={{ duration: 0.2 }}
                         >
-                          <span className={`flex items-center justify-center h-8 w-8 mx-auto ${isToday ? 'bg-primary text-primary-foreground rounded-full' : ''}`}>
+                          <motion.span 
+                            className={`flex items-center justify-center h-8 w-8 mx-auto ${isToday ? 'bg-primary text-primary-foreground rounded-full' : ''}`}
+                            animate={isToday ? { 
+                              scale: [1, 1.05, 1], 
+                              boxShadow: ["0px 0px 0px rgba(0,0,0,0)", "0px 0px 8px rgba(var(--primary-rgb), 0.5)", "0px 0px 0px rgba(0,0,0,0)"]
+                            } : {}}
+                            transition={{ duration: 3, repeat: Infinity, repeatDelay: 4 }}
+                          >
                             {i - 4 <= 0 ? i + 27 : i - 4 > 30 ? i - 34 : i - 4}
-                          </span>
+                          </motion.span>
                           {hasEvent && (
                             <>
-                              <div className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 rounded-full ${
-                                i === 15 ? 'bg-primary' : 
-                                i === 10 ? 'bg-accent' : 
-                                i === 22 ? 'bg-secondary' : 
-                                'bg-chart-5'
-                              }`}></div>
-                              {i === 15 && (
-                                <div className="absolute top-full left-0 right-0 z-10 bg-card p-2 rounded-md shadow-lg border text-xs text-left mr-1 ml-1 mt-1 opacity-90">
-                                  <div className="font-medium text-[9px] sm:text-xs">{specialEvent}</div>
-                                  <div className="text-muted-foreground text-[8px] sm:text-[10px]">12:00 PM - 1:30 PM</div>
-                                </div>
-                              )}
+                              <motion.div 
+                                className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1.5 w-1.5 rounded-full ${
+                                  i === 15 ? 'bg-primary' : 
+                                  i === 10 ? 'bg-accent' : 
+                                  i === 22 ? 'bg-secondary' : 
+                                  'bg-chart-5'
+                                }`}
+                                whileHover={{ scale: 1.5 }}
+                                animate={isHovered ? { scale: [1, 1.4, 1] } : {}}
+                                transition={{ duration: 1, repeat: isHovered ? Infinity : 0 }}
+                              ></motion.div>
+                              <AnimatePresence>
+                                {(isHovered || i === 15) && (
+                                  <motion.div 
+                                    className="absolute top-full left-0 right-0 z-[100] bg-card p-2 rounded-md shadow-lg border text-xs text-left mr-1 ml-1 mt-1"
+                                    initial={{ opacity: 0, y: -10, scale: 0.9 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <div className="font-medium text-[9px] sm:text-xs">{specialEvent}</div>
+                                    <div className="text-muted-foreground text-[8px] sm:text-[10px]">12:00 PM - 1:30 PM</div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </>
                           )}
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
                 </div>
               </div>
               
-              {/* Add floating decoration elements */}
-              <div className="absolute -top-6 -right-6 h-12 w-12 rounded-lg bg-accent/20 rotate-12"></div>
-              <div className="absolute -bottom-6 -left-6 h-12 w-12 rounded-lg bg-primary/20 -rotate-12"></div>
+              {/* Add floating decoration elements with animation */}
+              <motion.div 
+                className="absolute -top-6 -right-6 h-12 w-12 rounded-lg bg-accent/20 rotate-12"
+                animate={{ 
+                  rotate: [12, 15, 10, 15, 12],
+                  y: [0, -5, 0, -3, 0] 
+                }}
+                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              ></motion.div>
+              <motion.div 
+                className="absolute -bottom-6 -left-6 h-12 w-12 rounded-lg bg-primary/20 -rotate-12"
+                animate={{ 
+                  rotate: [-12, -8, -15, -10, -12],
+                  y: [0, 5, 0, 3, 0] 
+                }}
+                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+              ></motion.div>
+              
+              {/* Add new floating elements for more visual interest */}
+              <motion.div 
+                className="absolute top-1/4 -right-10 h-8 w-8 rounded-full bg-secondary/10 z-0"
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  x: [0, 5, 0]
+                }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              ></motion.div>
+              <motion.div 
+                className="absolute bottom-1/3 -left-8 h-6 w-6 rounded-full bg-primary/10 z-0"
+                animate={{ 
+                  scale: [1, 1.3, 1],
+                  x: [0, -5, 0]
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              ></motion.div>
             </motion.div>
           </div>
         </div>
@@ -270,13 +436,14 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: i * 0.1 }}
                 whileHover={{ 
                   scale: 1.03, 
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                  y: -5
                 }}
                 viewport={{ once: true }}
                 className={`bg-card border rounded-xl p-6 relative overflow-hidden group cursor-pointer`}
               >
                 <motion.div 
-                  className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0`}
+                  className={`absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0`}
                   initial={{ opacity: 0 }}
                   whileHover={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
@@ -321,10 +488,10 @@ export default function Home() {
                 </motion.p>
                 
                 <motion.div 
-                  className="absolute -bottom-2 -right-2 w-12 h-12 rounded-full opacity-0 group-hover:opacity-20 bg-primary z-0"
+                  className="absolute -bottom-2 -right-2 w-16 h-16 rounded-full opacity-0 group-hover:opacity-20 bg-primary z-0"
                   initial={{ scale: 0 }}
-                  whileHover={{ scale: 1 }}
-                  transition={{ duration: 0.3 }}
+                  whileHover={{ scale: 1.5, x: -5, y: -5 }}
+                  transition={{ duration: 0.4 }}
                 ></motion.div>
               </motion.div>
             ))}
@@ -453,11 +620,23 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <div className="flex items-center mb-4 sm:mb-0">
-              <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+              <motion.div
+                whileHover={{ rotate: 15, scale: 1.2 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+              </motion.div>
               <span className="font-bold">Caldy</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Caldy. Made with ❤️
+              © {new Date().getFullYear()} Caldy. Made with{' '}
+              <motion.span
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="inline-block"
+              >
+                ❤️
+              </motion.span>
             </div>
           </div>
         </div>
