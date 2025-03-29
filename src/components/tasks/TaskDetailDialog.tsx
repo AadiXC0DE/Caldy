@@ -294,7 +294,7 @@ export default function TaskDetailDialog({
                   className="h-7 px-2"
                 >
                   <BarChart3 className="h-4 w-4 mr-1" />
-                  {showProgress ? 'Hide' : 'Show'}
+                  {showProgress ? 'Remove' : 'Show'}
                 </Button>
               </div>
 
