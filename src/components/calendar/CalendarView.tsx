@@ -12,8 +12,9 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import AddEventDialog from './AddEventDialog';
 import IcalEventDialog from './IcalEventDialog';
+import { MonthYearPicker } from './MonthYearPicker';
 
-export default function CalendarView() {
+export default function CalendarView({ showHeader = true }) {
   const { 
     events, 
     tasks, 
@@ -32,6 +33,7 @@ export default function CalendarView() {
   const [defaultDate, setDefaultDate] = useState<Date>(new Date());
   const [isIcalEventOpen, setIsIcalEventOpen] = useState(false);
   const [selectedIcalEvent, setSelectedIcalEvent] = useState<any>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
   
   // Effect to update calendar view when view changes
   useEffect(() => {
@@ -49,6 +51,15 @@ export default function CalendarView() {
       }
     }
   }, [view]);
+  
+  // Handle date change from the MonthYearPicker
+  const handleDateChange = (date: Date) => {
+    setCurrentDate(date);
+    if (calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.gotoDate(date);
+    }
+  };
   
   // Convert our events to FullCalendar format
   const fullCalendarEvents = events.map(event => {
@@ -176,58 +187,76 @@ export default function CalendarView() {
     toast.success('Event duration updated');
   };
 
+  const handleDatesSet = (arg: any) => {
+    setCurrentDate(arg.view.currentStart);
+  };
+
   return (
-    <div className="h-full">
-      <FullCalendar
-        ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-        initialView={view === 'month' ? 'dayGridMonth' : 
-                    view === 'week' ? 'timeGridWeek' : 
-                    view === 'day' ? 'timeGridDay' : 'listWeek'}
-        headerToolbar={false} // We're using our own header buttons
-        events={[...fullCalendarEvents, ...icalCalendarEvents, ...taskEvents]}
-        editable={true}
-        selectable={true}
-        selectMirror={true}
-        dayMaxEvents={true}
-        weekends={true}
-        height="100%"
-        dateClick={handleDateClick}
-        eventClick={handleEventClick}
-        eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
-        nowIndicator={true}
-        slotMinTime="06:00:00"
-        slotMaxTime="22:00:00"
-        eventTimeFormat={{
-          hour: '2-digit',
-          minute: '2-digit',
-          meridiem: false,
-        }}
-        stickyHeaderDates={true}
-        eventDidMount={(arg) => {
-          // Add animations or special styles to events
-          if (arg.event.extendedProps.isTask) {
-            arg.el.classList.add('task-event');
+    <div className="h-full flex flex-col">
+      {showHeader && (
+        <div className="mb-2 flex justify-end">
+          <MonthYearPicker 
+            currentDate={currentDate} 
+            onDateChange={handleDateChange}
+            className="mb-2"
+          />
+        </div>
+      )}
+      
+      <div className="flex-grow">
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+          initialView={view === 'month' ? 'dayGridMonth' : 
+                      view === 'week' ? 'timeGridWeek' : 
+                      view === 'day' ? 'timeGridDay' : 'listWeek'}
+          headerToolbar={false} // We're using our own header buttons
+          events={[...fullCalendarEvents, ...icalCalendarEvents, ...taskEvents]}
+          editable={true}
+          selectable={true}
+          selectMirror={true}
+          dayMaxEvents={true}
+          weekends={true}
+          height="100%"
+          dateClick={handleDateClick}
+          eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
+          datesSet={handleDatesSet}
+          nowIndicator={true}
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          eventTimeFormat={{
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: false,
+          }}
+          stickyHeaderDates={true}
+          eventDidMount={(arg) => {
+            // Add animations or special styles to events
+            if (arg.event.extendedProps.isTask) {
+              arg.el.classList.add('task-event');
+              
+              // Add priority indicator
+              const priority = arg.event.extendedProps.priority;
+              if (priority === 'high') {
+                const dot = document.createElement('span');
+                dot.className = 'absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full';
+                arg.el.appendChild(dot);
+              }
+            }
             
-            // Add priority indicator
-            const priority = arg.event.extendedProps.priority;
-            if (priority === 'high') {
+            // Add style for iCal events
+            if (arg.event.extendedProps.isIcalEvent) {
+              arg.el.classList.add('ical-event');
               const dot = document.createElement('span');
-              dot.className = 'absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full';
+              dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
               arg.el.appendChild(dot);
             }
-          }
-          
-          // Add style for iCal events
-          if (arg.event.extendedProps.isIcalEvent) {
-            arg.el.classList.add('ical-event');
-            const dot = document.createElement('span');
-            dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
-            arg.el.appendChild(dot);
-          }
-        }}
-      />
+          }}
+        />
+      </div>
+      
       <AddEventDialog 
         open={isAddEventOpen} 
         onOpenChange={setIsAddEventOpen}

@@ -93,8 +93,8 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col h-full">
-              <div className="h-[40vh]">
-                <CalendarView />
+              <div className="h-[45vh]">
+                <CalendarView showHeader={false} />
               </div>
               
               <div className="mt-5 space-y-3 flex-grow">

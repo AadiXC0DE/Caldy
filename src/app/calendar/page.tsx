@@ -102,8 +102,8 @@ export default function CalendarPage() {
         className="w-full"
       >
         <Card>
-          <CardContent className="p-0 sm:p-1 md:p-2 lg:p-3 h-[calc(100vh-12rem)]">
-            <CalendarView />
+          <CardContent className="p-0 sm:p-1 md:p-2 lg:p-3 h-[calc(100vh-15rem)]">
+            <CalendarView showHeader={true} />
           </CardContent>
         </Card>
       </motion.div>
