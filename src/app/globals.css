@@ -211,3 +211,41 @@
   transform: translateY(-1px) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
+
+/* iCal event styling */
+.ical-event {
+  position: relative !important;
+  opacity: 0.9 !important;
+  border-left: 3px solid #3788d8 !important;
+}
+
+.ical-event:hover {
+  opacity: 1 !important;
+}
+
+.ical-event::before {
+  content: '📅' !important;
+  margin-right: 4px !important;
+}
+
+/* Fix for iCal events in list view */
+.fc-list-event.ical-event {
+  opacity: 1 !important;
+  border-left: none !important;
+}
+
+.fc-list-event.ical-event::before {
+  content: none !important;
+}
+
+/* Add a subtle indicator for iCal events in list view */
+.fc-list-event.ical-event .fc-list-event-dot {
+  background-color: #3788d8 !important;
+}
+
+/* Add a small indicator in the title for list view */
+.fc-list-event.ical-event .fc-list-event-title::before {
+  content: "📅 ";
+  font-size: 0.9em;
+  opacity: 0.8;
+}
