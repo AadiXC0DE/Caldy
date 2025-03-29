@@ -21,6 +21,8 @@ export default function CalendarView() {
     deleteEvent, 
     categories,
     view,
+    icalEvents,
+    icalUrl
   } = useApp();
   
   const calendarRef = useRef<FullCalendar>(null);
@@ -66,6 +68,26 @@ export default function CalendarView() {
     };
   });
   
+  // Convert iCal events to FullCalendar format
+  const icalCalendarEvents = icalEvents.map(event => {
+    return {
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      allDay: event.allDay,
+      backgroundColor: '#3788d8', // Default color for imported events
+      borderColor: '#3788d8',
+      classNames: ['ical-event'],
+      editable: false, // iCal events can't be edited
+      extendedProps: {
+        description: event.description,
+        location: event.location,
+        isIcalEvent: true,
+      },
+    };
+  });
+  
   // Add incomplete tasks with due dates to the calendar
   const taskEvents = tasks
     .filter(task => task.dueDate && !task.completed)
@@ -97,13 +119,30 @@ export default function CalendarView() {
   };
   
   const handleEventClick = (arg: any) => {
+    // If it's an iCal event, show info but don't allow editing
+    if (arg.event.extendedProps.isIcalEvent) {
+      toast.info(
+        <div>
+          <div className="font-bold">{arg.event.title}</div>
+          {arg.event.extendedProps.description && (
+            <div className="text-sm mt-1">{arg.event.extendedProps.description}</div>
+          )}
+          {arg.event.extendedProps.location && (
+            <div className="text-sm mt-1">📍 {arg.event.extendedProps.location}</div>
+          )}
+          <div className="text-xs mt-2 opacity-70">Imported from external calendar</div>
+        </div>
+      );
+      return;
+    }
+    
     // If it's a task event, handle differently
     if (arg.event.extendedProps.isTask) {
       toast.info('This is a task with due date. Edit in Tasks tab.');
       return;
     }
     
-    // Open event editing dialog
+    // Open event editing dialog for regular events
     const eventId = arg.event.id;
     setSelectedEventId(eventId);
     setIsAddEventOpen(true);
@@ -146,7 +185,7 @@ export default function CalendarView() {
                     view === 'week' ? 'timeGridWeek' : 
                     view === 'day' ? 'timeGridDay' : 'listWeek'}
         headerToolbar={false} // We're using our own header buttons
-        events={[...fullCalendarEvents, ...taskEvents]}
+        events={[...fullCalendarEvents, ...icalCalendarEvents, ...taskEvents]}
         editable={true}
         selectable={true}
         selectMirror={true}
@@ -178,6 +217,14 @@ export default function CalendarView() {
               dot.className = 'absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full';
               arg.el.appendChild(dot);
             }
+          }
+          
+          // Add style for iCal events
+          if (arg.event.extendedProps.isIcalEvent) {
+            arg.el.classList.add('ical-event');
+            const dot = document.createElement('span');
+            dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
+            arg.el.appendChild(dot);
           }
         }}
       />
