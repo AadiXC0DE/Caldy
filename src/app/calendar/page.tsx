@@ -29,20 +29,20 @@ export default function CalendarPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold flex items-center">
               <CalendarIcon className="h-8 w-8 mr-2 text-primary" />
-              Calendar
+              Your Calendar
             </h1>
             <p className="text-muted-foreground mt-1">
               Manage your schedule and events
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
             {mounted ? (
-              <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full sm:w-auto">
+              <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full md:w-auto">
                 <Button
                   variant={view === 'month' ? 'default' : 'ghost'}
                   size="sm"
@@ -86,7 +86,7 @@ export default function CalendarPage() {
 
             <Button 
               onClick={() => setIsAddEventOpen(true)}
-              className="w-full sm:w-auto h-9"
+              className="w-full md:w-auto h-9"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               New Event
