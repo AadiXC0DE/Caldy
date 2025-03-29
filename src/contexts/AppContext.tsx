@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Event, Task, Category, Tag, Priority, CalendarView } from '@/lib/types';
+import { toast } from 'react-hot-toast';
 
 interface AppContextProps {
   // Events
@@ -36,6 +37,13 @@ interface AppContextProps {
   // Dark Mode
   darkMode: boolean;
   toggleDarkMode: () => void;
+  
+  // iCal Integration
+  icalUrl: string | null;
+  icalEvents: Event[];
+  setIcalUrl: (url: string | null) => void;
+  refreshIcalEvents: () => Promise<void>;
+  isLoadingIcal: boolean;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -119,6 +127,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadFromStorage('caldy-dark-mode', false)
   );
   
+  // Add iCal state
+  const [icalUrl, setIcalUrl] = useState<string | null>(() => 
+    loadFromStorage('caldy-ical-url', null)
+  );
+  const [icalEvents, setIcalEvents] = useState<Event[]>(() => 
+    loadFromStorage('caldy-ical-events', [])
+  );
+  const [isLoadingIcal, setIsLoadingIcal] = useState(false);
+  
   // Save state to localStorage whenever it changes
   useEffect(() => {
     saveToStorage('caldy-events', events);
@@ -144,6 +161,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveToStorage('caldy-dark-mode', darkMode);
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+  
+  // Save iCal URL to localStorage
+  useEffect(() => {
+    saveToStorage('caldy-ical-url', icalUrl);
+  }, [icalUrl]);
+  
+  // Save iCal events to localStorage
+  useEffect(() => {
+    saveToStorage('caldy-ical-events', icalEvents);
+  }, [icalEvents]);
+  
+  // Function to fetch and parse iCal events
+  const refreshIcalEvents = async () => {
+    if (!icalUrl) {
+      setIcalEvents([]);
+      return;
+    }
+    
+    setIsLoadingIcal(true);
+    
+    try {
+      // Fetch iCal data from proxy to avoid CORS issues
+      const response = await fetch('/api/fetch-ical', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: icalUrl }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch iCal data');
+      }
+      
+      const data = await response.json();
+      setIcalEvents(data.events);
+      toast.success('Calendar imported successfully');
+    } catch (error) {
+      console.error('Error fetching iCal data:', error);
+      toast.error('Failed to import calendar');
+      setIcalEvents([]);
+    } finally {
+      setIsLoadingIcal(false);
+    }
+  };
+  
+  // Fetch iCal events when URL changes
+  useEffect(() => {
+    if (icalUrl) {
+      refreshIcalEvents();
+    }
+  }, [icalUrl]);
   
   // Event handlers
   const addEvent = (event: Omit<Event, 'id'>) => {
@@ -249,7 +318,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       view,
       setView,
       darkMode,
-      toggleDarkMode
+      toggleDarkMode,
+      icalUrl,
+      icalEvents,
+      setIcalUrl,
+      refreshIcalEvents,
+      isLoadingIcal
     }}>
       {children}
     </AppContext.Provider>
