@@ -31,7 +31,7 @@ export default function Home() {
     setMounted(true);
     
     // Update cursor position on mouse move
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       cursorX.set(e.clientX - 16); 
       cursorY.set(e.clientY - 16);
       setMousePosition({ x: e.clientX, y: e.clientY });
