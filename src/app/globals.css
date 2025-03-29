@@ -251,7 +251,6 @@
 .ical-event {
   position: relative !important;
   opacity: 0.9 !important;
-  border-left: 3px solid #3788d8 !important;
 }
 
 .ical-event:hover {
@@ -283,4 +282,30 @@
   content: "📅 ";
   font-size: 0.9em;
   opacity: 0.8;
+}
+
+/* Fix for FullCalendar "+more" popover on mobile screens */
+@media screen and (max-width: 640px) {
+  .fc-popover {
+    max-width: 90vw !important; /* Limit width to 90% of viewport */
+    left: 50% !important; /* Center horizontally */
+    transform: translateX(-50%) !important; /* Center adjustment */
+    right: auto !important; /* Override any right positioning */
+  }
+  
+  .fc-popover-body {
+    max-height: 60vh !important; /* Limit height */
+    overflow-y: auto !important; /* Enable scrolling if needed */
+  }
+  
+  /* Ensure event titles don't overflow */
+  .fc-popover .fc-event-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 85vw !important;
+  }
+  .fc-event-time{
+    display: none !important;
+  }
 }
