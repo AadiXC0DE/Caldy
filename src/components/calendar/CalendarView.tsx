@@ -11,6 +11,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import AddEventDialog from './AddEventDialog';
+import IcalEventDialog from './IcalEventDialog';
 
 export default function CalendarView() {
   const { 
@@ -29,6 +30,8 @@ export default function CalendarView() {
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date>(new Date());
+  const [isIcalEventOpen, setIsIcalEventOpen] = useState(false);
+  const [selectedIcalEvent, setSelectedIcalEvent] = useState<any>(null);
   
   // Effect to update calendar view when view changes
   useEffect(() => {
@@ -119,20 +122,17 @@ export default function CalendarView() {
   };
   
   const handleEventClick = (arg: any) => {
-    // If it's an iCal event, show info but don't allow editing
+    // If it's an iCal event, show the iCal event dialog
     if (arg.event.extendedProps.isIcalEvent) {
-      toast.info(
-        <div>
-          <div className="font-bold">{arg.event.title}</div>
-          {arg.event.extendedProps.description && (
-            <div className="text-sm mt-1">{arg.event.extendedProps.description}</div>
-          )}
-          {arg.event.extendedProps.location && (
-            <div className="text-sm mt-1">📍 {arg.event.extendedProps.location}</div>
-          )}
-          <div className="text-xs mt-2 opacity-70">Imported from external calendar</div>
-        </div>
-      );
+      setSelectedIcalEvent({
+        title: arg.event.title,
+        start: arg.event.start,
+        end: arg.event.end || new Date(arg.event.start.getTime() + 60 * 60 * 1000),
+        allDay: arg.event.allDay,
+        description: arg.event.extendedProps.description,
+        location: arg.event.extendedProps.location,
+      });
+      setIsIcalEventOpen(true);
       return;
     }
     
@@ -233,6 +233,11 @@ export default function CalendarView() {
         onOpenChange={setIsAddEventOpen}
         defaultDate={defaultDate}
         editEvent={selectedEventId ? events.find(e => e.id === selectedEventId) : undefined}
+      />
+      <IcalEventDialog
+        open={isIcalEventOpen}
+        onOpenChange={setIsIcalEventOpen}
+        event={selectedIcalEvent}
       />
     </div>
   );
