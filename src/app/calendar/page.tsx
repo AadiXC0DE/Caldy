@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -12,6 +12,11 @@ import AddEventDialog from '@/components/calendar/AddEventDialog';
 export default function CalendarPage() {
   const { view, setView } = useApp();
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const handleChangeView = (newView: 'month' | 'week' | 'day' | 'list') => {
     setView(newView);
@@ -36,44 +41,48 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-            <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full sm:w-auto">
-              <Button
-                variant={view === 'month' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleChangeView('month')}
-                className="rounded-md"
-              >
-                <Grid3X3 className="h-4 w-4 mr-1" />
-                Month
-              </Button>
-              <Button
-                variant={view === 'week' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleChangeView('week')}
-                className="rounded-md"
-              >
-                <Columns className="h-4 w-4 mr-1" />
-                Week
-              </Button>
-              <Button
-                variant={view === 'day' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleChangeView('day')}
-                className="rounded-md"
-              >
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                Day
-              </Button>
-              <Button
-                variant={view === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => handleChangeView('list')}
-                className="rounded-md"
-              >
-                <LayoutList className="h-4 w-4 mr-1" />
-                List
-              </Button>
-            </div>
+            {mounted ? (
+              <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full sm:w-auto">
+                <Button
+                  variant={view === 'month' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleChangeView('month')}
+                  className="rounded-md"
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1" />
+                  Month
+                </Button>
+                <Button
+                  variant={view === 'week' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleChangeView('week')}
+                  className="rounded-md"
+                >
+                  <Columns className="h-4 w-4 mr-1" />
+                  Week
+                </Button>
+                <Button
+                  variant={view === 'day' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleChangeView('day')}
+                  className="rounded-md"
+                >
+                  <CalendarIcon className="h-4 w-4 mr-1" />
+                  Day
+                </Button>
+                <Button
+                  variant={view === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleChangeView('list')}
+                  className="rounded-md"
+                >
+                  <LayoutList className="h-4 w-4 mr-1" />
+                  List
+                </Button>
+              </div>
+            ) : (
+              <div className="h-10 w-[300px] bg-background/80 rounded-lg border"></div>
+            )}
 
             <Button 
               onClick={() => setIsAddEventOpen(true)}

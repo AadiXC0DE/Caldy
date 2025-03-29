@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Priority } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,6 +61,12 @@ export default function TaskList({ tasks }: TaskListProps) {
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Add this effect to handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sort tasks: incomplete first, then by due date, then by priority
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -114,6 +120,24 @@ export default function TaskList({ tasks }: TaskListProps) {
     return category?.color;
   };
 
+  // If not mounted (server-side or initial render), show a loading state
+  if (!mounted) {
+    return (
+      <div className="py-8 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border rounded-lg p-4 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 bg-muted rounded-full"></div>
+              <div className="h-4 bg-muted rounded w-1/3"></div>
+              <div className="ml-auto w-16 h-6 bg-muted rounded"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Client-side rendering with empty state
   if (tasks.length === 0) {
     return (
       <div className="py-16 text-center">

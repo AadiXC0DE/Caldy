@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,11 @@ export function Navbar() {
   const pathname = usePathname();
   const { darkMode, toggleDarkMode } = useApp();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const isActive = (path: string) => pathname === path;
   
@@ -78,19 +83,21 @@ export function Navbar() {
       </div>
       
       <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleDarkMode}
-          className="rounded-full hidden sm:flex"
-        >
-          {darkMode ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-          <span className="sr-only">Toggle dark mode</span>
-        </Button>
+        {mounted && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleDarkMode}
+            className="rounded-full hidden sm:flex"
+          >
+            {darkMode ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle dark mode</span>
+          </Button>
+        )}
         
         <div className="hidden sm:block">
           <AddNew />
@@ -210,24 +217,26 @@ export function Navbar() {
                 <div className="p-4 border-t mt-auto">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Theme</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="gap-2" 
-                      onClick={toggleDarkMode}
-                    >
-                      {darkMode ? (
-                        <>
-                          <Sun className="h-4 w-4" />
-                          <span className="text-sm">Light Mode</span>
-                        </>
-                      ) : (
-                        <>
-                          <Moon className="h-4 w-4" />
-                          <span className="text-sm">Dark Mode</span>
-                        </>
-                      )}
-                    </Button>
+                    {mounted && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-2" 
+                        onClick={toggleDarkMode}
+                      >
+                        {darkMode ? (
+                          <>
+                            <Sun className="h-4 w-4" />
+                            <span className="text-sm">Light Mode</span>
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="h-4 w-4" />
+                            <span className="text-sm">Dark Mode</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
