@@ -1,13 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { CalendarDays, CheckSquare, Clock, Palette, Moon, ArrowRight, BellRing, Repeat, ArrowDownUp } from 'lucide-react';
+import { CalendarDays, CheckSquare, Clock, Palette, Moon, Sun, ArrowRight, BellRing, Repeat, ArrowDownUp } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 export default function Home() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // After mounting, we can access the theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -19,22 +32,53 @@ export default function Home() {
               <CalendarDays className="h-7 w-7 mr-2 text-primary" />
               <span className="text-2xl font-bold">Caldy</span>
             </div>
-            <div className="hidden sm:flex space-x-6">
+            <div className="hidden sm:flex space-x-6 items-center">
               <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1">
                 <CalendarDays className="h-4 w-4" />
                 Calendar
               </Link>
-              <Link href="/calendar" className="hover:text-primary transition-colors flex items-center gap-1">
+              <Link href="/tasks" className="hover:text-primary transition-colors flex items-center gap-1">
                 <CheckSquare className="h-4 w-4" />
                 Tasks
               </Link>
+              {mounted && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="rounded-full"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                  <span className="sr-only">Toggle dark mode</span>
+                </Button>
+              )}
             </div>
-            <Button asChild variant="default" className="shadow-sm">
-              <Link href="/calendar">
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {mounted && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="rounded-full sm:hidden mr-2"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                </Button>
+              )}
+              <Button asChild variant="default" className="shadow-sm">
+                <Link href="/calendar">
+                  Get Started
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </nav>
 
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -74,9 +118,9 @@ export default function Home() {
                       <span className="font-medium">Calendar View</span>
                     </div>
                     <div className="flex space-x-2">
-                      <div className="h-3 w-3 rounded-full bg-accent"></div>
-                      <div className="h-3 w-3 rounded-full bg-secondary"></div>
-                      <div className="h-3 w-3 rounded-full bg-primary"></div>
+                      <div className="h-3 w-3 rounded-full bg-green-200 dark:bg-accent"></div>
+                      <div className="h-3 w-3 rounded-full bg-purple-200 dark:bg-purple-800"></div>
+                      <div className="h-3 w-3 rounded-full bg-primary dark:bg-primary"></div>
                     </div>
                   </div>
                   <div className="grid grid-cols-7 text-center text-xs font-medium py-2 border-b">
@@ -97,7 +141,7 @@ export default function Home() {
                       return (
                         <div 
                           key={i} 
-                          className={`py-2 relative ${isCurrentMonth ? '' : 'text-muted-foreground/40'} ${isToday ? 'bg-primary/10' : ''}`}
+                          className={`py-2 relative ${isCurrentMonth ? '' : 'text-muted-foreground/40'} ${isToday ? '' : ''}`}
                         >
                           <span className={`flex items-center justify-center h-8 w-8 mx-auto ${isToday ? 'bg-primary text-primary-foreground rounded-full' : ''}`}>
                             {i - 4 <= 0 ? i + 27 : i - 4 > 30 ? i - 34 : i - 4}
@@ -112,8 +156,8 @@ export default function Home() {
                               }`}></div>
                               {i === 15 && (
                                 <div className="absolute top-full left-0 right-0 z-10 bg-card p-2 rounded-md shadow-lg border text-xs text-left mr-1 ml-1 mt-1 opacity-90">
-                                  <div className="font-medium">{specialEvent}</div>
-                                  <div className="text-muted-foreground text-[10px]">12:00 PM - 1:30 PM</div>
+                                  <div className="font-medium text-[9px] sm:text-xs">{specialEvent}</div>
+                                  <div className="text-muted-foreground text-[8px] sm:text-[10px]">12:00 PM - 1:30 PM</div>
                                 </div>
                               )}
                             </>
