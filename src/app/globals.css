@@ -171,13 +171,48 @@
   color: var(--primary) !important;
   font-weight: 500 !important;
   cursor: pointer !important;
+  font-size: 0.8rem !important;
+  margin: 0 !important;
+  padding: 0px 4px !important;
+  position: relative !important;
+  bottom: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
 }
 
 .fc-daygrid-more-link:hover {
   color: var(--primary-foreground) !important;
   background-color: var(--primary) !important;
   border-radius: 4px !important;
-  padding: 2 4px !important;
+  padding: 2px 4px !important;
+}
+
+/* Additional fix for the day cells to ensure proper containment */
+.fc-daygrid-day-bottom {
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+  min-height: 1.2em !important;
+  position: relative !important;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+  .fc-daygrid-more-link {
+    font-size: 0.75rem !important;
+    padding: 0 2px !important;
+  }
+  
+  .fc-daygrid-day-bottom {
+    margin-top: 0px !important;
+  }
+  
+  .fc .fc-daygrid-day-bottom {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
 }
 
 /* Dark mode specific popover styling */
@@ -216,7 +251,6 @@
 .ical-event {
   position: relative !important;
   opacity: 0.9 !important;
-  border-left: 3px solid #3788d8 !important;
 }
 
 .ical-event:hover {
@@ -248,4 +282,30 @@
   content: "📅 ";
   font-size: 0.9em;
   opacity: 0.8;
+}
+
+/* Fix for FullCalendar "+more" popover on mobile screens */
+@media screen and (max-width: 640px) {
+  .fc-popover {
+    max-width: 90vw !important; /* Limit width to 90% of viewport */
+    left: 50% !important; /* Center horizontally */
+    transform: translateX(-50%) !important; /* Center adjustment */
+    right: auto !important; /* Override any right positioning */
+  }
+  
+  .fc-popover-body {
+    max-height: 60vh !important; /* Limit height */
+    overflow-y: auto !important; /* Enable scrolling if needed */
+  }
+  
+  /* Ensure event titles don't overflow */
+  .fc-popover .fc-event-title {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 85vw !important;
+  }
+  .fc-event-time{
+    display: none !important;
+  }
 }
