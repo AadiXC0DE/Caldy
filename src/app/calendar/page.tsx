@@ -35,8 +35,8 @@ export default function CalendarPage() {
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <div className="bg-background border rounded-lg p-1 flex items-center">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+            <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full sm:w-auto">
               <Button
                 variant={view === 'month' ? 'default' : 'ghost'}
                 size="sm"
@@ -75,7 +75,10 @@ export default function CalendarPage() {
               </Button>
             </div>
 
-            <Button onClick={() => setIsAddEventOpen(true)}>
+            <Button 
+              onClick={() => setIsAddEventOpen(true)}
+              className="w-full sm:w-auto h-9"
+            >
               <PlusCircle className="h-4 w-4 mr-2" />
               New Event
             </Button>
