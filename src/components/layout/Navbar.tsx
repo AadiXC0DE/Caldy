@@ -50,6 +50,11 @@ export function Navbar() {
       path: '/tasks',
       icon: <CheckSquare className="h-5 w-5 mr-2" />,
     },
+    {
+      name: 'Settings',
+      path: '/settings',
+      icon: <Settings className="h-5 w-5 mr-2" />,
+    },
   ];
 
   return (
