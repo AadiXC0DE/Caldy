@@ -199,7 +199,7 @@ export default function AddEventDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startDate"
@@ -211,10 +211,12 @@ export default function AddEventDialog({
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className="pl-3 text-left font-normal flex justify-start items-center"
+                            className="pl-3 text-left font-normal flex justify-start items-center overflow-hidden"
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(field.value, 'PPP')}
+                            <CalendarIcon className="min-w-4 h-4 mr-2" />
+                            <span className="truncate">
+                              {format(field.value, window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP')}
+                            </span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -243,10 +245,12 @@ export default function AddEventDialog({
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className="pl-3 text-left font-normal flex justify-start items-center"
+                            className="pl-3 text-left font-normal flex justify-start items-center overflow-hidden"
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(field.value, 'PPP')}
+                            <CalendarIcon className="min-w-4 h-4 mr-2" />
+                            <span className="truncate">
+                              {format(field.value, window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP')}
+                            </span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
