@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, addHours } from 'date-fns';
-import { Calendar as CalendarIcon, Clock, MapPin, Tag, Repeat } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Tag, Repeat, Trash2 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Event } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -67,7 +67,7 @@ export default function AddEventDialog({
   defaultDate = new Date(),
   editEvent,
 }: AddEventDialogProps) {
-  const { addEvent, updateEvent, categories, tags } = useApp();
+  const { addEvent, updateEvent, deleteEvent, categories, tags } = useApp();
   const [showRecurring, setShowRecurring] = useState(false);
 
   const defaultValues: FormValues = editEvent ? {
@@ -97,6 +97,12 @@ export default function AddEventDialog({
     recurringInterval: undefined,
     tags: [],
   };
+
+  useEffect(() => {
+    if (open) {
+      form.reset(defaultValues);
+    }
+  }, [open, editEvent]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -140,7 +146,14 @@ export default function AddEventDialog({
     }
 
     onOpenChange(false);
-    form.reset(defaultValues);
+  };
+
+  const handleDelete = () => {
+    if (editEvent) {
+      deleteEvent(editEvent.id);
+      toast.success('Event deleted successfully');
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -398,17 +411,31 @@ export default function AddEventDialog({
               )}
             </AnimatePresence>
 
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editEvent ? 'Update' : 'Create'} Event
-              </Button>
+            <DialogFooter className="flex justify-between gap-2">
+              <div className="flex gap-2">
+                {editEvent && (
+                  <Button 
+                    type="button" 
+                    variant="destructive"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editEvent ? 'Update' : 'Create'} Event
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
