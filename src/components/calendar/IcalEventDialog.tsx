@@ -35,13 +35,13 @@ export default function IcalEventDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto overflow-x-hidden w-full">
         <DialogHeader>
-          <DialogTitle className="text-xl flex items-center">
-            <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-            <span className="flex-1">{event.title}</span>
-            <Badge variant="outline" className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-              External Calendar
+          <DialogTitle className="text-xl flex flex-wrap items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0" />
+            <span className="break-all">{event.title}</span>
+            <Badge variant="outline" className="ml-auto mt-1 sm:mt-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 max-w-full">
+              <span className="truncate">External Calendar</span>
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -51,9 +51,9 @@ export default function IcalEventDialog({
             <div className="flex-shrink-0">
               <Clock className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="font-medium">Time</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground break-words">
                 {event.allDay ? (
                   <span>All day</span>
                 ) : (
@@ -72,9 +72,9 @@ export default function IcalEventDialog({
               <div className="flex-shrink-0">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="font-medium">Location</div>
-                <div className="text-sm text-muted-foreground">{event.location}</div>
+                <div className="text-sm text-muted-foreground break-all">{event.location}</div>
               </div>
             </div>
           )}
@@ -84,9 +84,9 @@ export default function IcalEventDialog({
               <div className="flex-shrink-0 pt-1">
                 <CalendarIcon className="h-5 w-5 text-muted-foreground" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="font-medium">Description</div>
-                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                <div className="text-sm text-muted-foreground whitespace-pre-line break-all">
                   {event.description}
                 </div>
               </div>
