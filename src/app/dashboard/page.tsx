@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -19,31 +19,42 @@ export default function DashboardPage() {
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   
-  // Get today's date
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   
-  // Filter events for today
-  const todaysEvents = events.filter(event => 
-    isSameDay(new Date(event.start), today)
-  ).sort((a, b) => 
-    new Date(a.start).getTime() - new Date(b.start).getTime()
+  // Memoize filtered events and tasks
+  const todaysEvents = useMemo(() => 
+    events.filter(event => 
+      isSameDay(new Date(event.start), today)
+    ).sort((a, b) => 
+      new Date(a.start).getTime() - new Date(b.start).getTime()
+    ), [events, today]);
+  
+  const incompleteTasks = useMemo(() => 
+    tasks.filter(task => !task.completed), 
+    [tasks]
   );
   
-  // Filter tasks
-  const incompleteTasks = tasks.filter(task => !task.completed);
-  
-  const dueTodayTasks = incompleteTasks.filter(task => 
-    task.dueDate && isSameDay(new Date(task.dueDate), today)
+  const dueTodayTasks = useMemo(() => 
+    incompleteTasks.filter(task => 
+      task.dueDate && isSameDay(new Date(task.dueDate), today)
+    ), 
+    [incompleteTasks, today]
   );
   
-  const upcomingTasks = incompleteTasks.filter(task => 
-    task.dueDate && isAfter(new Date(task.dueDate), today) && 
-    !isSameDay(new Date(task.dueDate), today)
-  ).slice(0, 5); // Limit to 5 tasks
+  const upcomingTasks = useMemo(() => 
+    incompleteTasks.filter(task => 
+      task.dueDate && isAfter(new Date(task.dueDate), today) && 
+      !isSameDay(new Date(task.dueDate), today)
+    ).slice(0, 5),
+    [incompleteTasks, today]
+  );
   
-  const highPriorityTasks = incompleteTasks
-    .filter(task => task.priority === 'high')
-    .slice(0, 5); // Limit to 5 tasks
+  const highPriorityTasks = useMemo(() => 
+    incompleteTasks
+      .filter(task => task.priority === 'high')
+      .slice(0, 5),
+    [incompleteTasks]
+  );
 
   return (
     <div className="space-y-5">
@@ -58,7 +69,7 @@ export default function DashboardPage() {
               Dashboard
             </h1>
             <p className="text-muted-foreground mt-1">
-              Welcome to Caldy! Here's your overview for today.
+              Welcome to Caldy! Here&apos;s your overview for today.
             </p>
           </div>
 
@@ -89,7 +100,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-xl flex items-center">
                 <CalendarDays className="h-5 w-5 mr-2 text-primary" />
-                Today's Schedule
+                Today&apos;s Schedule
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col h-full">
