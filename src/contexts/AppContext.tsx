@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Event, Task, Category, Tag, Priority, CalendarView } from '@/lib/types';
+import { Event, Task, Category, Tag, CalendarView } from '@/lib/types';
 import { toast } from 'react-hot-toast';
 
 interface AppContextProps {
@@ -44,6 +44,18 @@ interface AppContextProps {
   setIcalUrl: (url: string | null) => void;
   refreshIcalEvents: () => Promise<void>;
   isLoadingIcal: boolean;
+  
+  // Festivals
+  festivals: Event[];
+  showFestivals: boolean;
+  festivalCountry: string;
+  festivalColor: string;
+  setShowFestivals: (show: boolean) => void;
+  setFestivalCountry: (country: string) => void;
+  setFestivalColor: (color: string) => void;
+  refreshFestivals: () => Promise<void>;
+  isLoadingFestivals: boolean;
+  availableCountries: { countryCode: string; name: string }[];
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -136,6 +148,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [isLoadingIcal, setIsLoadingIcal] = useState(false);
   
+  const [festivals, setFestivals] = useState<Event[]>(() => 
+    loadFromStorage('caldy-festivals', [])
+  );
+  const [showFestivals, setShowFestivals] = useState<boolean>(() => 
+    loadFromStorage('caldy-show-festivals', true)
+  );
+  const [festivalCountry, setFestivalCountry] = useState<string>(() => 
+    loadFromStorage('caldy-festival-country', 'US')
+  );
+  const [festivalColor, setFestivalColor] = useState<string>(() => 
+    loadFromStorage('caldy-festival-color', '#FF5722')
+  );
+  const [isLoadingFestivals, setIsLoadingFestivals] = useState(false);
+  const [availableCountries, setAvailableCountries] = useState<{ countryCode: string; name: string }[]>([]);
+  
+  // Fetch available countries on initial load
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const response = await fetch('/api/countries');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableCountries(data.countries);
+        }
+      } catch (error) {
+        console.error('Error fetching countries:', error);
+      }
+    };
+    
+    fetchCountries();
+  }, []);
+  
   // Save state to localStorage whenever it changes
   useEffect(() => {
     saveToStorage('caldy-events', events);
@@ -172,8 +216,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     saveToStorage('caldy-ical-events', icalEvents);
   }, [icalEvents]);
   
+  // Save festival state to localStorage
+  useEffect(() => {
+    saveToStorage('caldy-festivals', festivals);
+  }, [festivals]);
+  
+  useEffect(() => {
+    saveToStorage('caldy-show-festivals', showFestivals);
+  }, [showFestivals]);
+  
+  useEffect(() => {
+    saveToStorage('caldy-festival-country', festivalCountry);
+  }, [festivalCountry]);
+  
+  useEffect(() => {
+    saveToStorage('caldy-festival-color', festivalColor);
+  }, [festivalColor]);
+  
   // Function to fetch and parse iCal events
-  const refreshIcalEvents = async () => {
+  const refreshIcalEvents = useCallback(async () => {
     if (!icalUrl) {
       setIcalEvents([]);
       return;
@@ -205,14 +266,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoadingIcal(false);
     }
-  };
+  }, [icalUrl]);
   
   // Fetch iCal events when URL changes
   useEffect(() => {
     if (icalUrl) {
       refreshIcalEvents();
     }
-  }, [icalUrl]);
+  }, [icalUrl, refreshIcalEvents]);
+  
+  // Function to fetch and refresh festivals
+  const refreshFestivals = useCallback(async () => {
+    setIsLoadingFestivals(true);
+    
+    try {
+      const currentYear = new Date().getFullYear();
+      const url = `/api/festivals?year=${currentYear}&countryCode=${festivalCountry}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        // If we get a 404, it could be because the country isn't supported
+        if (response.status === 404) {
+          toast.error(`No holiday data available for ${festivalCountry}`);
+          setFestivals([]);
+        } else {
+          throw new Error('Failed to fetch festival data');
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.festivals && data.festivals.length > 0) {
+        setFestivals(data.festivals);
+        toast.success(`${data.festivals.length} holidays loaded for ${festivalCountry}`);
+      } else {
+        // Handle empty festivals data
+        setFestivals([]);
+        toast(`No holidays found for ${festivalCountry}`);
+      }
+    } catch (error) {
+      console.error('Error fetching festival data:', error);
+      toast.error('Failed to load festivals');
+      setFestivals([]);
+    } finally {
+      setIsLoadingFestivals(false);
+    }
+  }, [festivalCountry]);
+  
+  // Fetch festivals when country changes or on initial load
+  useEffect(() => {
+    refreshFestivals();
+  }, [festivalCountry, refreshFestivals]);
   
   // Event handlers
   const addEvent = (event: Omit<Event, 'id'>) => {
@@ -323,7 +428,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       icalEvents,
       setIcalUrl,
       refreshIcalEvents,
-      isLoadingIcal
+      isLoadingIcal,
+      festivals,
+      showFestivals,
+      festivalCountry,
+      festivalColor,
+      setShowFestivals,
+      setFestivalCountry,
+      setFestivalColor,
+      refreshFestivals,
+      isLoadingFestivals,
+      availableCountries
     }}>
       {children}
     </AppContext.Provider>
