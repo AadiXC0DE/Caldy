@@ -108,7 +108,7 @@ export default function Home() {
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-background text-foreground">
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-background/0"></div>
-        <div className="container mx-auto px-4 pt-10 pb-24 sm:pt-24 sm:pb-32">
+        <div className="container mx-auto px-4 pt-10 pb-20 sm:pt-20 sm:pb-32">
           <nav className="flex items-center justify-between mb-16 rounded-xl border p-3 bg-card/80 backdrop-blur-sm shadow-sm">
             <div className="flex items-center">
               <motion.div
