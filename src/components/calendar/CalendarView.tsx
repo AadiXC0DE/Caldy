@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { Event } from '@/lib/types';
 import { toast } from 'sonner';
 
 import FullCalendar from '@fullcalendar/react';
@@ -13,18 +12,62 @@ import listPlugin from '@fullcalendar/list';
 import AddEventDialog from './AddEventDialog';
 import IcalEventDialog from './IcalEventDialog';
 import { MonthYearPicker } from './MonthYearPicker';
+import { EventClickArg, EventDropArg, DatesSetArg } from '@fullcalendar/core';
+
+interface ICalEvent {
+  title: string;
+  start: Date;
+  end: Date;
+  allDay: boolean;
+  description?: string;
+  location?: string;
+  isFestival?: boolean;
+}
+
+interface DateClickArg {
+  date: Date;
+  dateStr: string;
+  allDay: boolean;
+  dayEl: HTMLElement;
+  jsEvent: MouseEvent;
+  view: {
+    type: string;
+    title: string;
+    currentStart: Date;
+    currentEnd: Date;
+  };
+}
+
+interface EventResizeDoneArg {
+  event: {
+    id: string;
+    start: Date | null;
+    end: Date | null;
+  };
+}
+
+interface FestivalEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date | null;
+  allDay: boolean;
+  description?: string;
+  types?: string[];
+  countries?: string[];
+  color?: string;
+}
 
 export default function CalendarView({ showHeader = true }) {
   const { 
     events, 
     tasks, 
-    addEvent, 
     updateEvent, 
-    deleteEvent, 
     categories,
     view,
     icalEvents,
-    icalUrl
+    festivals,
+    showFestivals
   } = useApp();
   
   const calendarRef = useRef<FullCalendar>(null);
@@ -32,7 +75,7 @@ export default function CalendarView({ showHeader = true }) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [defaultDate, setDefaultDate] = useState<Date>(new Date());
   const [isIcalEventOpen, setIsIcalEventOpen] = useState(false);
-  const [selectedIcalEvent, setSelectedIcalEvent] = useState<any>(null);
+  const [selectedIcalEvent, setSelectedIcalEvent] = useState<ICalEvent | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Effect to update calendar view when view changes
@@ -102,7 +145,27 @@ export default function CalendarView({ showHeader = true }) {
     };
   });
   
-  // Add incomplete tasks with due dates to the calendar
+  const festivalCalendarEvents = showFestivals ? festivals.map(festival => {
+    const typedFestival = festival as unknown as FestivalEvent;
+    return {
+      id: typedFestival.id,
+      title: typedFestival.title,
+      start: typedFestival.start,
+      end: typedFestival.end || undefined,
+      allDay: typedFestival.allDay,
+      backgroundColor: typedFestival.color || '#FF5722',
+      borderColor: typedFestival.color || '#FF5722',
+      classNames: ['festival-event'],
+      editable: false, // Festivals can't be edited
+      extendedProps: {
+        description: typedFestival.description,
+        isFestival: true,
+        types: typedFestival.types,
+        countries: typedFestival.countries,
+      },
+    };
+  }) : [];
+  
   const taskEvents = tasks
     .filter(task => task.dueDate && !task.completed)
     .map(task => {
@@ -124,21 +187,32 @@ export default function CalendarView({ showHeader = true }) {
       };
     });
   
-  const handleDateClick = (arg: any) => {
-    // Open event creation dialog with this date
+  const handleDateClick = (arg: DateClickArg) => {
     const startDate = new Date(arg.date);
     setDefaultDate(startDate);
     setSelectedEventId(null);
     setIsAddEventOpen(true);
   };
   
-  const handleEventClick = (arg: any) => {
-    // If it's an iCal event, show the iCal event dialog
+  const handleEventClick = (arg: EventClickArg) => {
+    if (arg.event.extendedProps.isFestival) {
+      setSelectedIcalEvent({
+        title: arg.event.title,
+        start: arg.event.start as Date,
+        end: arg.event.end as Date || arg.event.start as Date,
+        allDay: arg.event.allDay,
+        description: arg.event.extendedProps.description,
+        isFestival: true,
+      });
+      setIsIcalEventOpen(true);
+      return;
+    }
+    
     if (arg.event.extendedProps.isIcalEvent) {
       setSelectedIcalEvent({
         title: arg.event.title,
-        start: arg.event.start,
-        end: arg.event.end || new Date(arg.event.start.getTime() + 60 * 60 * 1000),
+        start: arg.event.start as Date,
+        end: arg.event.end as Date || new Date((arg.event.start as Date).getTime() + 60 * 60 * 1000),
         allDay: arg.event.allDay,
         description: arg.event.extendedProps.description,
         location: arg.event.extendedProps.location,
@@ -159,11 +233,11 @@ export default function CalendarView({ showHeader = true }) {
     setIsAddEventOpen(true);
   };
   
-  const handleEventDrop = (arg: any) => {
+  const handleEventDrop = (arg: EventDropArg) => {
     // Update event dates when dragged/dropped
     const eventId = arg.event.id;
-    const newStart = arg.event.start;
-    const newEnd = arg.event.end || new Date(newStart.getTime() + 60 * 60 * 1000);
+    const newStart = arg.event.start as Date;
+    const newEnd = arg.event.end as Date || new Date(newStart.getTime() + 60 * 60 * 1000);
     
     updateEvent(eventId, {
       start: newStart,
@@ -173,11 +247,11 @@ export default function CalendarView({ showHeader = true }) {
     toast.success('Event rescheduled');
   };
   
-  const handleEventResize = (arg: any) => {
+  const handleEventResize = (arg: EventResizeDoneArg) => {
     // Update event duration when resized
     const eventId = arg.event.id;
-    const newStart = arg.event.start;
-    const newEnd = arg.event.end;
+    const newStart = arg.event.start as Date;
+    const newEnd = arg.event.end as Date;
     
     updateEvent(eventId, {
       start: newStart,
@@ -187,7 +261,7 @@ export default function CalendarView({ showHeader = true }) {
     toast.success('Event duration updated');
   };
 
-  const handleDatesSet = (arg: any) => {
+  const handleDatesSet = (arg: DatesSetArg) => {
     setCurrentDate(arg.view.currentStart);
   };
 
@@ -211,7 +285,7 @@ export default function CalendarView({ showHeader = true }) {
                       view === 'week' ? 'timeGridWeek' : 
                       view === 'day' ? 'timeGridDay' : 'listWeek'}
           headerToolbar={false} // We're using our own header buttons
-          events={[...fullCalendarEvents, ...icalCalendarEvents, ...taskEvents]}
+          events={[...fullCalendarEvents, ...icalCalendarEvents, ...taskEvents, ...festivalCalendarEvents]}
           editable={true}
           selectable={true}
           selectMirror={true}
@@ -253,6 +327,14 @@ export default function CalendarView({ showHeader = true }) {
             //   dot.className = 'absolute top-0 left-0 h-2 w-2 bg-blue-500 rounded-full';
             //   arg.el.appendChild(dot);
             // }
+            
+            if (arg.event.extendedProps.isFestival) {
+              arg.el.classList.add('festival-event');
+              const icon = document.createElement('span');
+              icon.className = 'festival-icon';
+              icon.innerHTML = '🎉 ';
+              arg.el.querySelector('.fc-event-title')?.prepend(icon);
+            }
           }}
         />
       </div>

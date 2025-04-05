@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
-import { CalendarDays, CheckSquare, Clock, Palette, Moon, Sun, ArrowRight, BellRing, Repeat, ArrowDownUp } from 'lucide-react';
+import { motion, useMotionValue, useSpring, AnimatePresence, MotionValue } from 'framer-motion';
+import { CalendarDays, CheckSquare, Palette, Moon, Sun, ArrowRight, BellRing, Repeat, ArrowDownUp } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { TypewriterEffect } from '@/components/TypewriterEffect';
-import { TypewriterEffectSmooth } from '@/components/TypewriterEffect';
 
 interface CursorProps {
-  cursorXSpring: any; 
-  cursorYSpring: any;
+  cursorXSpring: MotionValue<number>;
+  cursorYSpring: MotionValue<number>;
 }
 
 interface GradientFollowerProps {
@@ -56,7 +54,6 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [activeDay, setActiveDay] = useState(15); // Default to "today" in the demo
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const cursorRef = useRef(null);
   
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
@@ -65,16 +62,18 @@ export default function Home() {
   const cursorXSpring = useSpring(cursorX, springConfig);
   const cursorYSpring = useSpring(cursorY, springConfig);
 
-  const throttle = useCallback((func: (...args: any[]) => void, limit: number) => {
-    let inThrottle: boolean;
-    return function(this: any, ...args: any[]) {
-      if (!inThrottle) {
-        func.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
-      }
-    };
-  }, []);
+  const throttle = useCallback(
+    <T extends unknown[]>(func: (...args: T) => void, limit: number) => {
+      let inThrottle: boolean;
+      return function(this: unknown, ...args: T) {
+        if (!inThrottle) {
+          func.apply(this, args);
+          inThrottle = true;
+          setTimeout(() => inThrottle = false, limit);
+        }
+      };
+    }, 
+  []);
 
   // After mounting, we can access the theme
   useEffect(() => {
@@ -109,7 +108,7 @@ export default function Home() {
       {/* Hero Section */}
       <header className="relative overflow-hidden bg-background text-foreground">
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 to-background/0"></div>
-        <div className="container mx-auto px-4 pt-10 pb-24 sm:pt-24 sm:pb-32">
+        <div className="container mx-auto px-4 pt-10 pb-20 sm:pt-20 sm:pb-32">
           <nav className="flex items-center justify-between mb-16 rounded-xl border p-3 bg-card/80 backdrop-blur-sm shadow-sm">
             <div className="flex items-center">
               <motion.div
@@ -273,7 +272,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="grid grid-cols-7 text-center text-xs font-medium py-2 border-b">
-                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, idx) => (
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
                       <motion.div 
                         key={day} 
                         className="py-1"

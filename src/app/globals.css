@@ -309,3 +309,32 @@
     display: none !important;
   }
 }
+
+/* Festival event styling */
+.festival-event {
+  position: relative !important;
+  border-radius: 4px !important;
+  opacity: 0.95 !important;
+}
+
+.festival-event:hover {
+  opacity: 1 !important;
+  z-index: 5 !important;
+}
+
+.festival-event::before {
+  margin-right: 4px !important;
+}
+
+.fc-list-event.festival-event {
+  border-left: 3px solid #FF5722 !important;
+}
+
+.fc-list-event.festival-event::before {
+  content: none !important;
+}
+
+.fc-list-event.festival-event .fc-list-event-title::before {
+  content: "🎉 ";
+  font-size: 0.9em;
+}

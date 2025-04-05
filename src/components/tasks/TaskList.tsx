@@ -8,21 +8,17 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { 
   CheckCircle, 
-  Circle, 
   ChevronDown, 
-  ChevronRight, 
   Calendar, 
   Edit, 
   Trash2, 
-  AlertCircle, 
-  Clock,
   Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible } from '@/components/ui/collapsible';
 import TaskDetailDialog from './TaskDetailDialog';
 
 // A helper function to get the priority color class
@@ -57,7 +53,7 @@ interface TaskListProps {
 }
 
 export default function TaskList({ tasks }: TaskListProps) {
-  const { completeTask, deleteTask, categories, tags, updateTaskProgress } = useApp();
+  const { completeTask, deleteTask, categories, tags } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -120,10 +116,6 @@ export default function TaskList({ tasks }: TaskListProps) {
     setIsDetailOpen(true);
   };
 
-  const handleProgressChange = (taskId: string, progress: number) => {
-    updateTaskProgress(taskId, progress);
-  };
-
   const getCategoryColor = (categoryId?: string) => {
     if (!categoryId) return undefined;
     const category = categories.find(c => c.id === categoryId);
@@ -170,9 +162,9 @@ export default function TaskList({ tasks }: TaskListProps) {
   }
 
   return (
-    <div className="divide-y">
-      <LayoutGroup>
-        <AnimatePresence>
+    <LayoutGroup>
+      <motion.div layout className="divide-y">
+        <AnimatePresence initial={false} mode="popLayout">
           {sortedTasks.map((task) => (
             <motion.div
               key={task.id}
@@ -183,17 +175,18 @@ export default function TaskList({ tasks }: TaskListProps) {
                 transition: { duration: 0.2 }
               }}
               exit={{ 
-                opacity: 0, 
-                height: 0, 
-                overflow: 'hidden',
-                transition: { duration: 0.3 } 
+                opacity: 0,
+                scale: 0.98,
+                transition: { duration: 0.15 } 
               }}
               layout
-              layoutId={task.id}
               className={`py-3 px-4 ${task.completed ? '' : ''} group`}
               whileHover={{ 
                 backgroundColor: 'rgba(var(--card-foreground-rgb), 0.03)', 
                 transition: { duration: 0.15 } 
+              }}
+              transition={{
+                layout: { duration: 0.3, type: "spring", bounce: 0.2 }
               }}
             >
               <Collapsible
@@ -280,58 +273,57 @@ export default function TaskList({ tasks }: TaskListProps) {
                 
                 <AnimatePresence>
                   {expandedTasks[task.id] && (
-                    <CollapsibleContent forceMount>
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ 
-                          opacity: 1, 
-                          height: 'auto',
-                          transition: { 
-                            height: { duration: 0.3, ease: "easeOut" },
-                            opacity: { duration: 0.2, delay: 0.1 }
-                          }
-                        }}
-                        exit={{ 
-                          opacity: 0, 
-                          height: 0,
-                          transition: { 
-                            height: { duration: 0.3, ease: "easeIn" },
-                            opacity: { duration: 0.2 }
-                          }
-                        }}
-                        className="pt-3 space-y-3 overflow-hidden"
-                      >
-                        <div className="pl-8">
-                          {task.description && (
-                            <p className="text-sm text-muted-foreground">
-                              {task.description}
-                            </p>
-                          )}
-                          
-                          {task.progress !== undefined && (
-                            <div className="space-y-1 mt-3">
-                              <div className="flex justify-between text-xs">
-                                <span>Progress</span>
-                                <span>{task.progress}%</span>
-                              </div>
-                              <Progress value={task.progress} className="h-2" />
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ 
+                        height: 'auto', 
+                        opacity: 1,
+                        transition: { 
+                          height: { duration: 0.3, ease: "easeOut" },
+                          opacity: { duration: 0.2, delay: 0.1 }
+                        }
+                      }}
+                      exit={{ 
+                        height: 0, 
+                        opacity: 0,
+                        transition: { 
+                          height: { duration: 0.2, ease: "easeInOut" },
+                          opacity: { duration: 0.1 }
+                        }
+                      }}
+                      className="overflow-hidden"
+                      layout
+                    >
+                      <div className="pt-3 space-y-3 pl-8">
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {task.description}
+                          </p>
+                        )}
+                        
+                        {task.progress !== undefined && (
+                          <div className="space-y-1 mt-3">
+                            <div className="flex justify-between text-xs">
+                              <span>Progress</span>
+                              <span>{task.progress}%</span>
                             </div>
-                          )}
-                          
-                          {task.tags && task.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-3">
-                              {task.tags.map(tagId => {
-                                const tag = tags.find(t => t.id === tagId);
-                                return tag ? (
-                                  <Badge key={tagId} variant="outline" className="text-xs">
-                                    <Tag className="h-3 w-3 mr-1" />
-                                    {tag.name}
-                                  </Badge>
-                                ) : null;
-                              })}
-                            </div>
-                          )}
-                        </div>
+                            <Progress value={task.progress} className="h-2" />
+                          </div>
+                        )}
+                        
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {task.tags.map(tagId => {
+                              const tag = tags.find(t => t.id === tagId);
+                              return tag ? (
+                                <Badge key={tagId} variant="outline" className="text-xs">
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  {tag.name}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                         
                         {/* Improved action buttons layout */}
                         <div className="mt-4 border-t pt-3">
@@ -369,21 +361,21 @@ export default function TaskList({ tasks }: TaskListProps) {
                             </motion.div>
                           </div>
                         </div>
-                      </motion.div>
-                    </CollapsibleContent>
+                      </div>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </Collapsible>
             </motion.div>
           ))}
         </AnimatePresence>
-      </LayoutGroup>
+      </motion.div>
       
       <TaskDetailDialog 
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         task={selectedTask}
       />
-    </div>
+    </LayoutGroup>
   );
 } 

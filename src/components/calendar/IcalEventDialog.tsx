@@ -23,6 +23,7 @@ interface IcalEventDialogProps {
     allDay: boolean;
     description?: string;
     location?: string;
+    isFestival?: boolean;
   } | null;
 }
 
@@ -37,11 +38,15 @@ export default function IcalEventDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto overflow-x-hidden w-full">
         <DialogHeader>
-          <DialogTitle className="text-xl flex flex-wrap items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0" />
-            <span className="break-all">{event.title}</span>
-            <Badge variant="outline" className="ml-auto mt-1 sm:mt-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 max-w-full">
-              <span className="truncate">External Calendar</span>
+          <DialogTitle className="text-xl">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0" />
+              <span className="break-all">{event.title}</span>
+            </div>
+            <Badge variant="outline" className="mt-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 inline-flex">
+              <span className="truncate">
+                {event.isFestival ? 'Festival/Holiday' : 'External Calendar'}
+              </span>
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -94,7 +99,9 @@ export default function IcalEventDialog({
           )}
 
           <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-            This event is imported from an external calendar and cannot be edited.
+            {event.isFestival 
+              ? "This is a holiday/festival that cannot be edited." 
+              : "This event is imported from an external calendar and cannot be edited."}
           </div>
         </div>
       </DialogContent>
