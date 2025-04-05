@@ -228,7 +228,7 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+          <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between rounded-lg border p-3 shadow-sm gap-3">
             <div className="space-y-0.5">
               <h3 className="font-medium">Dark Mode</h3>
               <p className="text-sm text-muted-foreground">
@@ -238,19 +238,19 @@ export default function SettingsPage() {
             <Button 
               variant="outline" 
               onClick={toggleDarkMode}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full xs:w-auto"
             >
               {!mounted ? (
                 "Dark Mode"
               ) : darkMode ? (
                 <>
                   <Sun className="h-4 w-4" />
-                  Light Mode
+                  <span className="whitespace-nowrap">Light Mode</span>
                 </>
               ) : (
                 <>
                   <Moon className="h-4 w-4" />
-                  Dark Mode
+                  <span className="whitespace-nowrap">Dark Mode</span>
                 </>
               )}
             </Button>
