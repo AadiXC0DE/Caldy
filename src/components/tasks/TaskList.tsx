@@ -8,21 +8,17 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { 
   CheckCircle, 
-  Circle, 
   ChevronDown, 
-  ChevronRight, 
   Calendar, 
   Edit, 
   Trash2, 
-  AlertCircle, 
-  Clock,
   Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import TaskDetailDialog from './TaskDetailDialog';
 
 // A helper function to get the priority color class
@@ -57,7 +53,7 @@ interface TaskListProps {
 }
 
 export default function TaskList({ tasks }: TaskListProps) {
-  const { completeTask, deleteTask, categories, tags, updateTaskProgress } = useApp();
+  const { completeTask, deleteTask, categories, tags } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -118,10 +114,6 @@ export default function TaskList({ tasks }: TaskListProps) {
   const handleOpenDetails = (task: Task) => {
     setSelectedTask(task);
     setIsDetailOpen(true);
-  };
-
-  const handleProgressChange = (taskId: string, progress: number) => {
-    updateTaskProgress(taskId, progress);
   };
 
   const getCategoryColor = (categoryId?: string) => {
