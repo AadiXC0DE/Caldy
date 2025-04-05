@@ -338,17 +338,17 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="pt-3 flex items-center justify-between">
+          <div className="pt-3 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2">
             <Button
               variant="outline"
               onClick={refreshFestivals}
               disabled={isLoadingFestivals}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs sm:text-sm w-full xs:w-auto"
             >
-              <RefreshCcw className={`h-4 w-4 ${isLoadingFestivals ? 'animate-spin' : ''}`} />
-              Refresh Holidays
+              <RefreshCcw className={`h-4 w-4 ${isLoadingFestivals ? 'animate-spin' : ''} flex-shrink-0`} />
+              <span className="whitespace-nowrap">Refresh Holidays</span>
             </Button>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               {mounted ? `${clientSideFestivalsCount} holidays loaded` : 'Loading...'}
             </div>
           </div>
@@ -410,35 +410,37 @@ export default function SettingsPage() {
                   <h3 className="font-medium mb-1">Current iCal subscription</h3>
                   <p className="text-sm text-muted-foreground break-all mb-2">{icalUrl}</p>
                 </div>
-                <div className="flex gap-2 mt-2 sm:mt-0">
+                <div className="flex flex-wrap xs:flex-nowrap gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleRefresh}
                     disabled={isLoadingIcal}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm"
                   >
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                    Refresh
+                    <RefreshCcw className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="whitespace-nowrap">Refresh</span>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleRemoveIcalUrl}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm"
                   >
-                    <Trash className="h-4 w-4 mr-2" />
-                    Remove
+                    <Trash className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="whitespace-nowrap">Remove</span>
                   </Button>
                 </div>
               </div>
               
               <Separator className="my-3" />
               
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+              <div className="flex items-center justify-between">
+                <span className="flex items-center text-xs sm:text-sm">
+                  <Calendar className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0 text-muted-foreground" />
                   Events:
                 </span>
-                <span>
+                <span className="text-xs sm:text-sm">
                   {isLoadingIcal ? (
                     <Skeleton className="h-5 w-16" />
                   ) : (
@@ -465,7 +467,7 @@ export default function SettingsPage() {
   ]);
 
   return (
-    <div className="container mx-auto max-w-6xl px-4">
+    <div className="container mx-auto max-w-6xl px-1">
       {pageHeader}
 
       {/* Main Settings Grid Layout */}
