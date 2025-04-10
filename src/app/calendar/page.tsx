@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import CalendarView from '@/components/calendar/CalendarView';
 import AddEventDialog from '@/components/calendar/AddEventDialog';
 
-export default function CalendarPage() {
+function CalendarPageClient() {
   const { view, setView } = useApp();
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -114,11 +114,11 @@ export default function CalendarPage() {
     >
       <Card>
         <CardContent className="p-0 sm:p-1 md:p-2 lg:p-3 h-[calc(100vh-15rem)]">
-          <CalendarView showHeader={true} />
+          {mounted && <CalendarView showHeader={true} />}
         </CardContent>
       </Card>
     </motion.div>
-  ), []);
+  ), [mounted]);
 
   return (
     <div className="space-y-4">
@@ -130,5 +130,13 @@ export default function CalendarPage() {
         onOpenChange={setIsAddEventOpen} 
       />
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div>Loading calendar...</div>}>
+      <CalendarPageClient />
+    </Suspense>
   );
 } 
