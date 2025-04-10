@@ -99,60 +99,7 @@ export default function TasksPage() {
             Manage your tasks and track your progress
           </p>
         </div>
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      // Search term filter
-      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (task.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-      
-      // Priority filter
-      const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
-      
-      // Category filter
-      const matchesCategory = filterCategory === 'all' || task.categoryId === filterCategory;
-      
-      // Completed status filter
-      const matchesCompleted = filterCompleted === 'all' || 
-        (filterCompleted === 'completed' && task.completed) || 
-        (filterCompleted === 'incomplete' && !task.completed);
-      
-      return matchesSearch && matchesPriority && matchesCategory && matchesCompleted;
-    });
-  }, [tasks, searchTerm, filterPriority, filterCategory, filterCompleted]);
 
-  // Memoize the category select items to prevent re-rendering when other state changes
-  const categorySelectItems = useMemo(() => {
-    return categories.map((category) => (
-      <SelectItem key={category.id} value={category.id}>
-        {category.name}
-      </SelectItem>
-    ));
-  }, [categories]);
-
-  const headerSection = useMemo(() => (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center">
-            <CheckSquare className="h-8 w-8 mr-2 text-primary" />
-            Tasks
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your tasks and track your progress
-          </p>
-        </div>
-
-        <Button onClick={handleAddTaskOpen}>
-          <PlusCircle className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
-      </div>
-    </motion.div>
-  ), [handleAddTaskOpen]);
         <Button onClick={handleAddTaskOpen}>
           <PlusCircle className="h-4 w-4 mr-2" />
           New Task
@@ -243,7 +190,7 @@ export default function TasksPage() {
   useEffect(() => {
     if (taskId) {
       setSelectedTaskId(taskId);
-      setIsAddTaskOpen(false);
+      setIsTaskDetailOpen(true);
     }
   }, [taskId]);
 
