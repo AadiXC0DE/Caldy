@@ -11,7 +11,6 @@ import {
   Sun, 
   Moon, 
   LayoutDashboard,
-  X,
   CalendarPlus,
   ListPlus 
 } from 'lucide-react';
@@ -19,6 +18,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/s
 import { useApp } from '@/contexts/AppContext';
 import { cn } from '@/lib/utils';
 import { AddNew } from './AddNew';
+import { SearchBar } from './SearchBar';
 import { motion } from 'framer-motion';
 import { Separator } from '@/components/ui/separator';
 
@@ -86,8 +86,13 @@ export function Navbar() {
           ))}
         </div>
       </div>
-      
-      <div className="flex items-center space-x-2">
+
+      <div className="flex items-center space-x-3">
+        {/* Search Bar - Now positioned on the right side */}
+        <div className="hidden md:block">
+          <SearchBar />
+        </div>
+        
         {mounted && (
           <Button
             variant="outline"
@@ -119,24 +124,26 @@ export function Navbar() {
         <div className="md:hidden">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="md:hidden">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
+                  width="24"
+                  height="24"
                   viewBox="0 0 24 24"
+                  fill="none"
                   stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="4" y1="18" x2="20" y2="18" />
                 </svg>
-                <span className="sr-only">Toggle menu</span>
+                <span className="sr-only">Toggle Menu</span>
               </Button>
             </SheetTrigger>
+
             <SheetContent side="right" className="w-[85%] p-0 border-l">
               <div className="flex flex-col h-full">
                 {/* Header */}
@@ -145,6 +152,11 @@ export function Navbar() {
                     <CalendarDays className="h-6 w-6 mr-2 text-primary" />
                     <h2 className="text-xl font-semibold">Caldy</h2>
                   </div>
+                </div>
+                
+                {/* Mobile Search Bar */}
+                <div className="p-4 border-b">
+                  <SearchBar />
                 </div>
                 
                 {/* Navigation items */}
@@ -252,7 +264,7 @@ export function Navbar() {
                           )}
                         </motion.div>
                         <span className="text-sm ml-2">
-                          {darkMode ? "Dark Mode" : "Light Mode"}
+                          {darkMode ? "Light Mode" : "Dark Mode"}
                         </span>
                       </Button>
                     )}
