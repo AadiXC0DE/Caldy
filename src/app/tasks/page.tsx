@@ -187,16 +187,14 @@ export default function TasksPage() {
     </motion.div>
   ), [filteredTasks]);
 
-  // Add this useEffect to handle direct navigation from search
   useEffect(() => {
     if (taskId) {
-      const task = tasks.find(t => t.id === taskId);
-      if (task) {
-        setSelectedTaskId(taskId);
-        setIsTaskDetailOpen(true);
-      }
+      setSelectedTaskId(taskId);
+      setIsAddTaskOpen(false);
     }
-  }, [taskId, tasks]);
+  }, [taskId]);
+
+  const taskToShow = tasks.find(task => task.id === selectedTaskId) || null;
 
   return (
     <div className="space-y-4">
@@ -211,7 +209,7 @@ export default function TasksPage() {
       <TaskDetailDialog
         open={isTaskDetailOpen}
         onOpenChange={setIsTaskDetailOpen}
-        taskId={selectedTaskId}
+        task={taskToShow}
       />
     </div>
   );
