@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -17,6 +17,8 @@ import {
 import TaskList from '@/components/tasks/TaskList';
 import AddTaskDialog from '@/components/tasks/AddTaskDialog';
 import { Priority } from '@/lib/types';
+import { useSearchParams } from 'next/navigation';
+import TaskDetailDialog from '@/components/tasks/TaskDetailDialog';
 
 export default function TasksPage() {
   const { tasks, categories } = useApp();
@@ -25,6 +27,10 @@ export default function TasksPage() {
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<string | 'all'>('all');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'completed' | 'incomplete'>('all');
+  const searchParams = useSearchParams();
+  const taskId = searchParams.get('task');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
 
   const handleAddTaskOpen = useCallback(() => {
     setIsAddTaskOpen(true);
@@ -181,6 +187,17 @@ export default function TasksPage() {
     </motion.div>
   ), [filteredTasks]);
 
+  // Add this useEffect to handle direct navigation from search
+  useEffect(() => {
+    if (taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        setSelectedTaskId(taskId);
+        setIsTaskDetailOpen(true);
+      }
+    }
+  }, [taskId, tasks]);
+
   return (
     <div className="space-y-4">
       {headerSection}
@@ -190,6 +207,11 @@ export default function TasksPage() {
       <AddTaskDialog 
         open={isAddTaskOpen} 
         onOpenChange={setIsAddTaskOpen} 
+      />
+      <TaskDetailDialog
+        open={isTaskDetailOpen}
+        onOpenChange={setIsTaskDetailOpen}
+        taskId={selectedTaskId}
       />
     </div>
   );
