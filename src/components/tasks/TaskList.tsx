@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Priority } from '@/lib/types';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -52,7 +52,7 @@ interface TaskListProps {
   tasks: Task[];
 }
 
-export default function TaskList({ tasks }: TaskListProps) {
+function TaskListClient({ tasks }: TaskListProps) {
   const { completeTask, deleteTask, categories, tags } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -377,5 +377,13 @@ export default function TaskList({ tasks }: TaskListProps) {
         task={selectedTask}
       />
     </LayoutGroup>
+  );
+}
+
+export default function TaskList(props: TaskListProps) {
+  return (
+    <Suspense fallback={<div>Loading tasks...</div>}>
+      <TaskListClient {...props} />
+    </Suspense>
   );
 } 
