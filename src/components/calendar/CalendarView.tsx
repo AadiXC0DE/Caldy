@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
@@ -59,7 +59,12 @@ interface FestivalEvent {
   color?: string;
 }
 
-export default function CalendarView({ showHeader = true }) {
+interface CalendarViewProps {
+  showHeader?: boolean;
+  [key: string]: unknown; // to be fixed later
+}
+
+function CalendarViewClient({ showHeader = true }) {
   const { 
     events, 
     tasks, 
@@ -430,5 +435,13 @@ export default function CalendarView({ showHeader = true }) {
         event={selectedIcalEvent}
       />
     </div>
+  );
+}
+
+export default function CalendarView(props: CalendarViewProps) {
+  return (
+    <Suspense fallback={<div>Loading calendar view...</div>}>
+      <CalendarViewClient {...props} />
+    </Suspense>
   );
 } 

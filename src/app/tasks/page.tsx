@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -20,7 +20,7 @@ import { Priority } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import TaskDetailDialog from '@/components/tasks/TaskDetailDialog';
 
-export default function TasksPage() {
+function TasksPageClient() {
   const { tasks, categories } = useApp();
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -212,5 +212,13 @@ export default function TasksPage() {
         task={taskToShow}
       />
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div>Loading tasks...</div>}>
+      <TasksPageClient />
+    </Suspense>
   );
 } 

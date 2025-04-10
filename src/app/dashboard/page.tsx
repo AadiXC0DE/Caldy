@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -14,7 +14,7 @@ import TaskList from '@/components/tasks/TaskList';
 import AddEventDialog from '@/components/calendar/AddEventDialog';
 import AddTaskDialog from '@/components/tasks/AddTaskDialog';
 
-export default function DashboardPage() {
+function DashboardPageClient() {
   const { events, tasks, categories } = useApp();
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
@@ -246,5 +246,13 @@ export default function DashboardPage() {
         onOpenChange={setIsAddTaskOpen}
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <DashboardPageClient />
+    </Suspense>
   );
 } 
