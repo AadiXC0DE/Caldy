@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from 'sonner';
+import { useSearchParams } from 'next/navigation';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -70,6 +71,11 @@ export default function CalendarView({ showHeader = true }) {
     showFestivals
   } = useApp();
   
+  const searchParams = useSearchParams();
+  const eventId = searchParams.get('event');
+  const festivalId = searchParams.get('festival');
+  const dateParam = searchParams.get('date');
+  
   const calendarRef = useRef<FullCalendar>(null);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -94,6 +100,79 @@ export default function CalendarView({ showHeader = true }) {
       }
     }
   }, [view]);
+  
+  useEffect(() => {
+    // Handle date parameter
+    if (dateParam) {
+      try {
+        const dateFromUrl = new Date(dateParam);
+        if (!isNaN(dateFromUrl.getTime())) {
+          // Valid date - navigate calendar to this date
+          setCurrentDate(dateFromUrl);
+          if (calendarRef.current) {
+            calendarRef.current.getApi().gotoDate(dateFromUrl);
+          }
+        }
+      } catch (e) {
+        console.error("Invalid date parameter:", e);
+      }
+    }
+    
+    // Handle event parameter
+    if (eventId) {
+      const foundEvent = events.find(event => event.id === eventId);
+      if (foundEvent) {
+        setSelectedEventId(eventId);
+        setIsAddEventOpen(true);
+        
+        // Also navigate to the event date if not already there
+        if (calendarRef.current && foundEvent.start) {
+          calendarRef.current.getApi().gotoDate(new Date(foundEvent.start));
+        }
+      } else {
+        // If not found in regular events, check in iCal events
+        const foundIcalEvent = icalEvents.find(event => event.id === eventId);
+        
+        if (foundIcalEvent) {
+          setSelectedIcalEvent({
+            title: foundIcalEvent.title,
+            start: new Date(foundIcalEvent.start),
+            end: new Date(foundIcalEvent.end || foundIcalEvent.start),
+            allDay: foundIcalEvent.allDay || false,
+            description: foundIcalEvent.description,
+            location: foundIcalEvent.location,
+          });
+          setIsIcalEventOpen(true);
+          
+          // Navigate to the iCal event date
+          if (calendarRef.current && foundIcalEvent.start) {
+            calendarRef.current.getApi().gotoDate(new Date(foundIcalEvent.start));
+          }
+        }
+      }
+    }
+    
+    // Handle festival parameter
+    if (festivalId) {
+      const foundFestival = festivals.find(festival => festival.id === festivalId);
+      if (foundFestival) {
+        setSelectedIcalEvent({
+          title: foundFestival.title,
+          start: new Date(foundFestival.start),
+          end: new Date(foundFestival.end || foundFestival.start),
+          allDay: foundFestival.allDay || true,
+          description: foundFestival.description,
+          isFestival: true,
+        });
+        setIsIcalEventOpen(true);
+        
+        // Also navigate to the festival date
+        if (calendarRef.current && foundFestival.start) {
+          calendarRef.current.getApi().gotoDate(new Date(foundFestival.start));
+        }
+      }
+    }
+  }, [eventId, festivalId, dateParam, events, festivals, icalEvents]);
   
   // Handle date change from the MonthYearPicker
   const handleDateChange = (date: Date) => {
