@@ -22,7 +22,7 @@ type SearchResult = {
 };
 
 export function SearchBar() {
-  const { events, tasks, festivals } = useApp();
+  const { events, tasks, festivals, icalEvents } = useApp();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -112,7 +112,7 @@ export function SearchBar() {
       return score;
     };
 
-    // Search through events with relevance scoring
+    // Search through regular events
     const eventResults = events
       .map((event: Event) => ({
         id: event.id,
@@ -126,7 +126,21 @@ export function SearchBar() {
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    // Search through tasks with relevance scoring
+    // Search through iCal events
+    const icalEventResults = icalEvents
+      .map((event: Event) => ({
+        id: event.id,
+        title: event.title,
+        type: 'event' as const,
+        date: new Date(event.start),
+        description: event.description,
+        url: `/calendar?event=${event.id}`,
+        score: getRelevanceScore(event.title, event.description)
+      }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Search through tasks
     const taskResults = tasks
       .map((task: Task) => ({
         id: task.id,
@@ -140,7 +154,7 @@ export function SearchBar() {
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    // Search through festivals with relevance scoring
+    // Search through festivals
     const festivalResults = festivals
       .map((festival) => ({
         id: festival.id,
@@ -155,13 +169,13 @@ export function SearchBar() {
       .sort((a, b) => b.score - a.score);
 
     // Combine results, sort by score, then limit to 10 results
-    const scoredResults = [...eventResults, ...taskResults, ...festivalResults]
+    const scoredResults = [...eventResults, ...icalEventResults, ...taskResults, ...festivalResults]
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
       
     // Remove score property before setting results
-    setResults(scoredResults.map(({...rest }) => rest));
-  }, [events, tasks, festivals]);
+    setResults(scoredResults.map(({ ...rest }) => rest));
+  }, [events, tasks, festivals, icalEvents]);
 
   // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -204,7 +218,22 @@ export function SearchBar() {
 
   // Navigate to the correct page when clicking on a result
   const handleResultClick = (result: SearchResult) => {
-    router.push(result.url);
+    // Different handling based on result type
+    if (result.type === 'event' || result.type === 'festival') {
+      // For events and festivals, navigate to calendar and include the date
+      const dateParam = result.date ? 
+        `&date=${result.date.toISOString().split('T')[0]}` : 
+        '';
+        
+      // Navigate to calendar with both item ID and date parameters
+      router.push(`/calendar?${result.type}=${result.id}${dateParam}`);
+    } 
+    else if (result.type === 'task') {
+      // For tasks, navigate to tasks page with the task ID
+      router.push(`/tasks?task=${result.id}`);
+    }
+    
+    // Close the search interface
     setIsOpen(false);
     setSearchQuery('');
     setResults([]);
