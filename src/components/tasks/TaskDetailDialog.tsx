@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Tag, Trash2, BarChart3 } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { Task, Priority } from '@/lib/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Task, RecurringPattern } from '@/lib/types';
+import { toast } from 'sonner';
+import { SubtaskList } from './SubtaskList';
+import { RecurringTaskSettings } from './RecurringTaskSettings';
 
 import {
   Dialog,
@@ -36,7 +38,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -48,6 +49,13 @@ const formSchema = z.object({
   categoryId: z.string().optional(),
   progress: z.number().min(0).max(100).optional(),
   tags: z.array(z.string()).default([]),
+  recurring: z.object({
+    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+    interval: z.number().min(1).default(1),
+    endDate: z.date().optional().nullable(),
+    occurrences: z.number().optional().nullable(),
+    daysOfWeek: z.array(z.number()).optional(),
+  }).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -66,6 +74,8 @@ export default function TaskDetailDialog({
   const { updateTask, addTask, categories, tags } = useApp();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showProgress, setShowProgress] = useState(false);
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(false);
 
   const defaultValues: FormValues = {
     title: '',
@@ -74,9 +84,10 @@ export default function TaskDetailDialog({
     dueDate: null,
     completed: false,
     priority: 'medium',
-    categoryId: undefined,
+    categoryId: 'none',
     progress: 0,
     tags: [],
+    recurring: null,
   };
 
   const form = useForm<FormValues>({
@@ -97,17 +108,20 @@ export default function TaskDetailDialog({
         categoryId: task.categoryId,
         progress: task.progress,
         tags: task.tags || [],
+        recurring: task.recurring || null,
       });
       setSelectedTags(task.tags || []);
       setShowProgress(task.progress !== undefined);
+      setShowRecurring(!!task.recurring);
+      setShowSubtasks(true);
     } else if (open && !task) {
       form.reset(defaultValues);
       setSelectedTags([]);
       setShowProgress(false);
+      setShowRecurring(false);
+      setShowSubtasks(false);
     }
   }, [open, task, form]);
-
-  const watchProgress = form.watch('progress');
 
   const onSubmit = (data: FormValues) => {
     const taskData: Omit<Task, 'id'> = {
@@ -117,8 +131,9 @@ export default function TaskDetailDialog({
       dueDate: data.dueDate || undefined,
       completed: data.completed,
       priority: data.priority,
-      categoryId: data.categoryId,
+      categoryId: data.categoryId === 'none' ? undefined : data.categoryId,
       tags: selectedTags,
+      recurring: showRecurring ? data.recurring as RecurringPattern : undefined,
     };
 
     if (showProgress) {
@@ -146,7 +161,7 @@ export default function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {task ? 'Edit Task' : 'Add New Task'}
@@ -253,12 +268,10 @@ export default function TaskDetailDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="none">No Category</SelectItem>
                       {categories.map(category => (
                         <SelectItem key={category.id} value={category.id}>
-                          <div className="flex items-center">
-                            <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: category.color }}></div>
-                            {category.name}
-                          </div>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -268,65 +281,55 @@ export default function TaskDetailDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="completed"
-              render={({ field }) => (
-                <FormItem className="flex items-center space-x-2 space-y-0">
-                  <FormControl>
-                    <Checkbox 
-                      checked={field.value} 
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="cursor-pointer">Mark as completed</FormLabel>
-                </FormItem>
-              )}
+            {/* Recurring Task Settings */}
+            <RecurringTaskSettings
+              form={form}
+              showRecurring={showRecurring}
+              setShowRecurring={setShowRecurring}
             />
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="text-sm font-medium">Progress Tracking</div>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setShowProgress(!showProgress)}
-                  className="h-7 px-2"
-                >
-                  <BarChart3 className="h-4 w-4 mr-1" />
-                  {showProgress ? 'Remove' : 'Show'}
-                </Button>
-              </div>
-
-              {showProgress && (
-                <FormField
-                  control={form.control}
-                  name="progress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span>0%</span>
-                        <span>{field.value}%</span>
-                        <span>100%</span>
-                      </div>
-                      <FormControl>
-                        <Slider
-                          defaultValue={[field.value || 0]}
-                          max={100}
-                          step={5}
-                          onValueChange={(values) => field.onChange(values[0])}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="showProgress"
+                checked={showProgress}
+                onCheckedChange={(checked) => setShowProgress(!!checked)}
+              />
+              <label
+                htmlFor="showProgress"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Track progress for this task
+              </label>
             </div>
 
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Tags</div>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
+            {showProgress && (
+              <FormField
+                control={form.control}
+                name="progress"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="space-y-1">
+                      <FormLabel>Progress ({field.value}%)</FormLabel>
+                      <FormControl>
+                        <Slider
+                          value={[field.value || 0]}
+                          min={0}
+                          max={100}
+                          step={1}
+                          onValueChange={(value) => field.onChange(value[0])}
+                        />
+                      </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div>
+              <FormLabel>Tags</FormLabel>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {tags.map((tag) => (
                   <Badge
                     key={tag.id}
                     variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
@@ -336,16 +339,73 @@ export default function TaskDetailDialog({
                     {tag.name}
                   </Badge>
                 ))}
+                {tags.length === 0 && (
+                  <div className="text-sm text-muted-foreground">No tags available</div>
+                )}
               </div>
             </div>
 
+            <FormField
+              control={form.control}
+              name="completed"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Mark as completed
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="showSubtasks"
+                checked={showSubtasks}
+                onCheckedChange={(checked) => setShowSubtasks(!!checked)}
+              />
+              <label
+                htmlFor="showSubtasks"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Add subtasks
+              </label>
+            </div>
+
+            {showSubtasks && (
+              <div className="border rounded-md p-4 bg-muted/10">
+                <h3 className="text-sm font-medium mb-2">Subtasks</h3>
+                {task ? (
+                  <SubtaskList parentId={task.id} />
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    You can add subtasks after creating the task.
+                  </div>
+                )}
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="submit">
-                {task ? 'Update Task' : 'Create Task'}
+                {task ? 'Save Changes' : 'Create Task'}
               </Button>
             </DialogFooter>
           </form>
         </Form>
+        
+        {/* Subtasks (only for existing tasks) */}
+        {task && !showSubtasks && (
+          <div className="mt-6 pt-6 border-t">
+            <SubtaskList parentId={task.id} />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

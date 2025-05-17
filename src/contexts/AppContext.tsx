@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Event, Task, Category, Tag, CalendarView } from '@/lib/types';
+import { Event, Task, Category, Tag, CalendarView, TaskView, RecurringPattern, TimeTracking } from '@/lib/types';
 import { toast } from 'react-hot-toast';
 
 interface AppContextProps {
@@ -17,6 +17,47 @@ interface AppContextProps {
   deleteTask: (id: string) => void;
   completeTask: (id: string, completed: boolean) => void;
   updateTaskProgress: (id: string, progress: number) => void;
+  
+  // New Task Features
+  getSubtasks: (taskId: string) => Task[];
+  addSubtask: (parentId: string, task: Omit<Task, 'id' | 'parentId'>) => void;
+  reorderTasks: (taskIds: string[]) => void;
+  duplicateTask: (taskId: string) => void;
+  batchUpdateTasks: (taskIds: string[], updates: Partial<Task>) => void;
+  toggleTaskTemplate: (taskId: string) => void;
+  createTaskFromTemplate: (templateId: string) => void;
+  
+  // Task Views
+  taskViews: TaskView[];
+  activeTaskView: string | null;
+  addTaskView: (view: Omit<TaskView, 'id'>) => void;
+  updateTaskView: (id: string, view: Partial<TaskView>) => void;
+  deleteTaskView: (id: string) => void;
+  setActiveTaskView: (id: string | null) => void;
+  
+  // Time Tracking
+  startTaskTimer: (taskId: string, timerType: 'regular' | 'pomodoro') => void;
+  stopTaskTimer: (taskId: string) => void;
+  updateTaskTimeTracking: (taskId: string, timeTracking: Partial<TimeTracking>) => void;
+  activeTimerTaskId: string | null;
+  timerStatus: 'stopped' | 'running' | 'paused';
+  timerType: 'regular' | 'pomodoro';
+  timerSessionType: 'work' | 'break' | 'long-break';
+  pomodoroSettings: {
+    workMinutes: number;
+    breakMinutes: number;
+    longBreakMinutes: number;
+    longBreakInterval: number;
+  };
+  updatePomodoroSettings: (settings: Partial<{
+    workMinutes: number;
+    breakMinutes: number;
+    longBreakMinutes: number;
+    longBreakInterval: number;
+  }>) => void;
+  
+  // Recurring Tasks
+  createNextRecurringTask: (taskId: string) => void;
   
   // Categories
   categories: Category[];
@@ -76,6 +117,46 @@ const defaultTags: Tag[] = [
   { id: uuidv4(), name: 'Meeting' },
   { id: uuidv4(), name: 'Call' },
 ];
+
+const defaultTaskViews: TaskView[] = [
+  {
+    id: uuidv4(),
+    name: 'All Tasks',
+    filters: {},
+    sortBy: 'dueDate',
+    sortDirection: 'asc'
+  },
+  {
+    id: uuidv4(),
+    name: 'High Priority',
+    filters: {
+      priority: 'high',
+      completed: 'incomplete'
+    },
+    sortBy: 'dueDate',
+    sortDirection: 'asc'
+  },
+  {
+    id: uuidv4(),
+    name: 'Due Today',
+    filters: {
+      completed: 'incomplete',
+      dueDateRange: {
+        start: new Date(),
+        end: new Date()
+      }
+    },
+    sortBy: 'priority',
+    sortDirection: 'desc'
+  }
+];
+
+const defaultPomodoroSettings = {
+  workMinutes: 25,
+  breakMinutes: 5,
+  longBreakMinutes: 15,
+  longBreakInterval: 4
+};
 
 // Helper function to load data from localStorage
 const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
@@ -138,6 +219,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [darkMode, setDarkMode] = useState<boolean>(() => 
     loadFromStorage('caldy-dark-mode', false)
   );
+
+  // Task Views
+  const [taskViews, setTaskViews] = useState<TaskView[]>(() => 
+    loadFromStorage('caldy-task-views', defaultTaskViews)
+  );
+  
+  const [activeTaskView, setActiveTaskView] = useState<string | null>(() => 
+    loadFromStorage('caldy-active-task-view', taskViews[0]?.id || null)
+  );
+
+  // Timer state
+  const [activeTimerTaskId, setActiveTimerTaskId] = useState<string | null>(null);
+  const [timerStatus, setTimerStatus] = useState<'stopped' | 'running' | 'paused'>('stopped');
+  const [timerType, setTimerType] = useState<'regular' | 'pomodoro'>('regular');
+  const [timerSessionType, setTimerSessionType] = useState<'work' | 'break' | 'long-break'>('work');
+  const [pomodoroSettings, setPomodoroSettings] = useState(() => 
+    loadFromStorage('caldy-pomodoro-settings', defaultPomodoroSettings)
+  );
+  
+  // Save task views to localStorage whenever they change
+  useEffect(() => {
+    saveToStorage('caldy-task-views', taskViews);
+  }, [taskViews]);
+
+  useEffect(() => {
+    saveToStorage('caldy-active-task-view', activeTaskView);
+  }, [activeTaskView]);
+
+  useEffect(() => {
+    saveToStorage('caldy-pomodoro-settings', pomodoroSettings);
+  }, [pomodoroSettings]);
   
   // Add iCal state
   const [icalUrl, setIcalUrl] = useState<string | null>(() => 
@@ -338,7 +450,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Task handlers
   const addTask = (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: uuidv4() };
-    setTasks([...tasks, newTask]);
+    setTasks(prev => [...prev, newTask]);
+    
+    // If it has a parent, update the parent's subtasks array
+    if (task.parentId) {
+      updateTask(task.parentId, {
+        subtasks: [...(tasks.find(t => t.id === task.parentId)?.subtasks || []), newTask.id]
+      });
+    }
+    
+    return newTask.id;
   };
   
   const updateTask = (id: string, updatedData: Partial<Task>) => {
@@ -400,46 +521,331 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDarkMode(!darkMode);
   };
   
+  // New Task Features
+  const getSubtasks = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.subtasks) return [];
+    
+    return tasks.filter(t => task.subtasks?.includes(t.id));
+  };
+  
+  const addSubtask = (parentId: string, subtask: Omit<Task, 'id' | 'parentId'>) => {
+    const parent = tasks.find(t => t.id === parentId);
+    if (!parent) return;
+    
+    const newSubtaskId = addTask({
+      ...subtask,
+      parentId
+    });
+    
+    // Update parent's subtasks array
+    const updatedSubtasks = [...(parent.subtasks || []), newSubtaskId];
+    updateTask(parentId, { subtasks: updatedSubtasks });
+    
+    // Update parent's progress
+    updateParentTaskProgress(parentId);
+  };
+  
+  const reorderTasks = (taskIds: string[]) => {
+    // Update the order of each task
+    taskIds.forEach((id, index) => {
+      updateTask(id, { order: index });
+    });
+  };
+  
+  const duplicateTask = (taskId: string) => {
+    const original = tasks.find(t => t.id === taskId);
+    if (!original) return '';
+    
+    // Use underscore prefix to indicate intentionally unused variable
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, ...taskWithoutId } = original;
+    
+    // Create new task with same properties but new ID
+    const newTaskId = addTask({
+      ...taskWithoutId,
+      title: `${original.title} (Copy)`,
+      completed: false
+    });
+    
+    // If the original has subtasks, duplicate those too
+    if (original.subtasks?.length) {
+      original.subtasks.forEach(subtaskId => {
+        const subtask = tasks.find(t => t.id === subtaskId);
+        if (subtask) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id, parentId, ...subtaskWithoutIds } = subtask;
+          addSubtask(newTaskId, {
+            ...subtaskWithoutIds,
+            title: subtask.title,
+            completed: false
+          });
+        }
+      });
+    }
+    
+    return newTaskId;
+  };
+  
+  const batchUpdateTasks = (taskIds: string[], updates: Partial<Task>) => {
+    taskIds.forEach(id => {
+      updateTask(id, updates);
+    });
+  };
+  
+  const toggleTaskTemplate = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    updateTask(taskId, { isTemplate: !task.isTemplate });
+  };
+  
+  const createTaskFromTemplate = (templateId: string) => {
+    const template = tasks.find(t => t.id === templateId && t.isTemplate);
+    if (!template) return '';
+    
+    return duplicateTask(templateId);
+  };
+  
+  // Task Views
+  const addTaskView = (view: Omit<TaskView, 'id'>) => {
+    const newView = { ...view, id: uuidv4() };
+    setTaskViews(prev => [...prev, newView]);
+    return newView.id;
+  };
+  
+  const updateTaskView = (id: string, updates: Partial<TaskView>) => {
+    setTaskViews(prev => prev.map(view => 
+      view.id === id ? { ...view, ...updates } : view
+    ));
+  };
+  
+  const deleteTaskView = (id: string) => {
+    setTaskViews(prev => prev.filter(view => view.id !== id));
+    
+    // If the active view is deleted, set to the first available
+    if (activeTaskView === id) {
+      setActiveTaskView(taskViews.find(v => v.id !== id)?.id || null);
+    }
+  };
+  
+  // Time Tracking
+  const startTaskTimer = (taskId: string, timerType: 'regular' | 'pomodoro') => {
+    setActiveTimerTaskId(taskId);
+    setTimerStatus('running');
+    setTimerType(timerType);
+    
+    if (timerType === 'pomodoro') {
+      setTimerSessionType('work');
+    }
+  };
+  
+  const stopTaskTimer = (taskId: string) => {
+    if (activeTimerTaskId === taskId) {
+      setActiveTimerTaskId(null);
+      setTimerStatus('stopped');
+    }
+  };
+  
+  const updateTaskTimeTracking = (taskId: string, timeTracking: Partial<TimeTracking>) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    updateTask(taskId, {
+      timeTracking: {
+        ...task.timeTracking,
+        ...timeTracking
+      }
+    });
+  };
+  
+  const updatePomodoroSettings = (settings: Partial<{
+    workMinutes: number;
+    breakMinutes: number;
+    longBreakMinutes: number;
+    longBreakInterval: number;
+  }>) => {
+    setPomodoroSettings(prev => ({
+      ...prev,
+      ...settings
+    }));
+  };
+  
+  // Recurring Tasks
+  const createNextRecurringTask = (taskId: string) => {
+    const originalTask = tasks.find(t => t.id === taskId);
+    if (!originalTask || !originalTask.recurring) return;
+    
+    const { recurring, dueDate, date, ...taskProps } = originalTask;
+    
+    // Calculate the next occurrence date
+    let nextDueDate: Date | undefined;
+    let nextDate: Date | undefined;
+    
+    if (dueDate) {
+      nextDueDate = calculateNextOccurrence(dueDate, recurring);
+    }
+    
+    if (date) {
+      nextDate = calculateNextOccurrence(date, recurring);
+    }
+    
+    // Check if we should stop based on end date or occurrences
+    if (recurring.endDate && nextDueDate && nextDueDate > new Date(recurring.endDate)) {
+      return; // Don't create a new task if we've passed the end date
+    }
+    
+    // Create the new recurring task
+    addTask({
+      ...taskProps,
+      // id property is automatically generated by addTask
+      title: originalTask.title,
+      dueDate: nextDueDate,
+      date: nextDate,
+      completed: false,
+      recurring: originalTask.recurring,
+      parentId: originalTask.parentId, // Preserve parent-child relationship
+      subtasks: [], // Don't copy subtasks to the next occurrence
+    });
+  };
+  
+  // Calculate next occurrence based on recurring pattern
+  const calculateNextOccurrence = (baseDate: Date, pattern: RecurringPattern): Date => {
+    const nextDate = new Date(baseDate);
+    
+    switch (pattern.frequency) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + pattern.interval);
+        break;
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + (pattern.interval * 7));
+        break;
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + pattern.interval);
+        break;
+      case 'yearly':
+        nextDate.setFullYear(nextDate.getFullYear() + pattern.interval);
+        break;
+    }
+    
+    return nextDate;
+  };
+  
+  // Update parent task progress based on subtasks
+  const updateParentTaskProgress = (parentId: string) => {
+    const parent = tasks.find(t => t.id === parentId);
+    if (!parent || !parent.subtasks || parent.subtasks.length === 0) return;
+    
+    const subtasks = tasks.filter(t => parent.subtasks?.includes(t.id));
+    
+    if (subtasks.length === 0) return;
+    
+    // Calculate progress based on subtasks completion
+    const totalSubtasks = subtasks.length;
+    const completedSubtasks = subtasks.filter(t => t.completed).length;
+    const progressPercentage = Math.round((completedSubtasks / totalSubtasks) * 100);
+    
+    // Update the parent task
+    updateTask(parentId, { 
+      progress: progressPercentage,
+      // If all subtasks are complete, mark the parent as complete
+      completed: progressPercentage === 100
+    });
+    
+    // Recursively update any grandparent tasks
+    if (parent.parentId) {
+      updateParentTaskProgress(parent.parentId);
+    }
+  };
+  
   return (
-    <AppContext.Provider value={{
-      events,
-      addEvent,
-      updateEvent,
-      deleteEvent,
-      tasks,
-      addTask,
-      updateTask,
-      deleteTask,
-      completeTask,
-      updateTaskProgress,
-      categories,
-      addCategory,
-      updateCategory,
-      deleteCategory,
-      tags,
-      addTag,
-      updateTag,
-      deleteTag,
-      view,
-      setView,
-      darkMode,
-      toggleDarkMode,
-      icalUrl,
-      icalEvents,
-      setIcalUrl,
-      refreshIcalEvents,
-      isLoadingIcal,
-      festivals,
-      showFestivals,
-      festivalCountry,
-      festivalColor,
-      setShowFestivals,
-      setFestivalCountry,
-      setFestivalColor,
-      refreshFestivals,
-      isLoadingFestivals,
-      availableCountries
-    }}>
+    <AppContext.Provider
+      value={{
+        // Events
+        events,
+        addEvent,
+        updateEvent,
+        deleteEvent,
+        
+        // Tasks
+        tasks,
+        addTask,
+        updateTask,
+        deleteTask,
+        completeTask,
+        updateTaskProgress,
+        
+        // New Task Features
+        getSubtasks,
+        addSubtask,
+        reorderTasks,
+        duplicateTask,
+        batchUpdateTasks,
+        toggleTaskTemplate,
+        createTaskFromTemplate,
+        
+        // Task Views
+        taskViews,
+        activeTaskView,
+        addTaskView,
+        updateTaskView,
+        deleteTaskView,
+        setActiveTaskView,
+        
+        // Time Tracking
+        startTaskTimer,
+        stopTaskTimer,
+        updateTaskTimeTracking,
+        activeTimerTaskId,
+        timerStatus,
+        timerType,
+        timerSessionType,
+        pomodoroSettings,
+        updatePomodoroSettings,
+        
+        // Recurring Tasks
+        createNextRecurringTask,
+        
+        // Categories
+        categories,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        
+        // Tags
+        tags,
+        addTag,
+        updateTag,
+        deleteTag,
+        
+        // Calendar View
+        view,
+        setView,
+        
+        // Dark Mode
+        darkMode,
+        toggleDarkMode,
+        
+        // iCal Integration
+        icalUrl,
+        icalEvents,
+        setIcalUrl,
+        refreshIcalEvents,
+        isLoadingIcal,
+        
+        // Festivals
+        festivals,
+        showFestivals,
+        festivalCountry,
+        festivalColor,
+        setShowFestivals,
+        setFestivalCountry,
+        setFestivalColor,
+        refreshFestivals,
+        isLoadingFestivals,
+        availableCountries,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

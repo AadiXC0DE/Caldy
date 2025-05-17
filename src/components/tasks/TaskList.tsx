@@ -12,7 +12,8 @@ import {
   Calendar, 
   Edit, 
   Trash2, 
-  Tag
+  Tag,
+  ListTodo
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,7 +54,7 @@ interface TaskListProps {
 }
 
 function TaskListClient({ tasks }: TaskListProps) {
-  const { completeTask, deleteTask, categories, tags } = useApp();
+  const { completeTask, deleteTask, categories, tags, getSubtasks } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -165,209 +166,264 @@ function TaskListClient({ tasks }: TaskListProps) {
     <LayoutGroup>
       <motion.div layout className="divide-y">
         <AnimatePresence initial={false} mode="popLayout">
-          {sortedTasks.map((task) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ 
-                opacity: 1, 
-                y: 0,
-                transition: { duration: 0.2 }
-              }}
-              exit={{ 
-                opacity: 0,
-                scale: 0.98,
-                transition: { duration: 0.15 } 
-              }}
-              layout
-              className={`py-3 px-4 ${task.completed ? '' : ''} group`}
-              whileHover={{ 
-                backgroundColor: 'rgba(var(--card-foreground-rgb), 0.03)', 
-                transition: { duration: 0.15 } 
-              }}
-              transition={{
-                layout: { duration: 0.3, type: "spring", bounce: 0.2 }
-              }}
-            >
-              <Collapsible
-                open={expandedTasks[task.id]}
-                onOpenChange={() => toggleExpanded(task.id)}
+          {sortedTasks.map((task) => {
+            const subtasks = getSubtasks(task.id);
+            const hasSubtasks = subtasks.length > 0;
+            const completedSubtasks = subtasks.filter(st => st.completed).length;
+            
+            return (
+              <motion.div
+                key={task.id}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ 
+                  opacity: 1, 
+                  y: 0,
+                  transition: { duration: 0.2 }
+                }}
+                exit={{ 
+                  opacity: 0,
+                  scale: 0.98,
+                  transition: { duration: 0.15 } 
+                }}
+                layout
+                className={`py-2 px-4 ${task.completed ? '' : ''} group`}
+                whileHover={{ 
+                  backgroundColor: 'rgba(var(--card-foreground-rgb), 0.03)', 
+                  transition: { duration: 0.15 } 
+                }}
+                transition={{
+                  layout: { duration: 0.3, type: "spring", bounce: 0.2 }
+                }}
               >
-                <div 
-                  className="flex items-start gap-3 cursor-pointer relative"
-                  onClick={(e) => {
-                    if (!(e.target as HTMLElement).closest('.task-checkbox')) {
-                      toggleExpanded(task.id);
-                    }
-                  }}
+                <Collapsible
+                  open={expandedTasks[task.id]}
+                  onOpenChange={() => toggleExpanded(task.id)}
                 >
-                  <div className="mt-0.5 task-checkbox" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox 
-                      checked={task.completed}
-                      onCheckedChange={(checked) => 
-                        handleCompleteTask(task.id, checked as boolean)
+                  <div 
+                    className="flex items-start gap-3 cursor-pointer relative"
+                    onClick={(e) => {
+                      if (!(e.target as HTMLElement).closest('.task-checkbox')) {
+                        toggleExpanded(task.id);
                       }
-                      className={`h-5 w-5 ${task.completed ? '' : getPriorityColor(task.priority)}`}
-                    />
-                  </div>
-                  
-                  <div className="flex-grow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-grow">
-                        <h3 className="text-base font-medium relative overflow-hidden">
-                          <span className={`inline-block relative ${task.completed ? 'text-muted-foreground' : ''}`}>
-                            {task.title}
+                    }}
+                  >
+                    <div className="mt-0.5 task-checkbox" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={task.completed}
+                        onCheckedChange={(checked) => 
+                          handleCompleteTask(task.id, checked as boolean)
+                        }
+                        className={`h-5 w-5 ${task.completed ? '' : getPriorityColor(task.priority)}`}
+                      />
+                    </div>
+                    
+                    <div className="flex-grow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-grow">
+                          <h3 className="text-base font-medium relative overflow-hidden">
+                            <span className={`inline-block relative ${task.completed ? 'text-muted-foreground' : ''}`}>
+                              {task.title}
+                              
+                              {(task.completed || completingTaskId === task.id) && (
+                                <motion.span 
+                                  className="absolute left-0 top-1/2 h-[1.5px] bg-muted-foreground"
+                                  initial={{ width: "0%" }}
+                                  animate={{ width: "100%" }}
+                                  transition={{ 
+                                    duration: task.completed ? 0 : 0.3,
+                                    ease: "easeInOut" 
+                                  }}
+                                />
+                              )}
+                            </span>
                             
-                            {(task.completed || completingTaskId === task.id) && (
-                              <motion.span 
-                                className="absolute left-0 top-1/2 h-[1.5px] bg-muted-foreground"
-                                initial={{ width: "0%" }}
-                                animate={{ width: "100%" }}
-                                transition={{ 
-                                  duration: task.completed ? 0 : 0.3,
-                                  ease: "easeInOut" 
-                                }}
-                              />
+                            {hasSubtasks && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                <Badge variant="outline" className="ml-1">
+                                  <ListTodo className="h-3 w-3 mr-1" />
+                                  {completedSubtasks}/{subtasks.length}
+                                </Badge>
+                              </span>
                             )}
-                          </span>
-                        </h3>
-                        
-                        <div className="flex flex-wrap items-center mt-1">
-                          <div className="flex items-center text-xs text-muted-foreground w-28 mr-1">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {task.dueDate 
-                              ? format(new Date(task.dueDate), 'MMM d, yyyy')
-                              : 'No date'}
-                          </div>
+                          </h3>
                           
-                          <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs mr-2">
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                          </Badge>
-                          
-                          {task.categoryId && (
-                            <div 
-                              className="text-xs px-2 py-0.5 rounded-full"
-                              style={{ 
-                                backgroundColor: `${getCategoryColor(task.categoryId)}20`,
-                                color: getCategoryColor(task.categoryId)
-                              }}
-                            >
-                              {categories.find(c => c.id === task.categoryId)?.name}
+                          <div className="flex flex-wrap items-center">
+                            <div className="flex items-center text-xs text-muted-foreground w-28 mr-1">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {task.dueDate 
+                                ? format(new Date(task.dueDate), 'MMM d, yyyy')
+                                : 'No date'}
                             </div>
-                          )}
+                            
+                            <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs mr-2">
+                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                            </Badge>
+                            
+                            {task.categoryId && (
+                              <div 
+                                className="text-xs px-2 py-0.5 rounded-full"
+                                style={{ 
+                                  backgroundColor: `${getCategoryColor(task.categoryId)}20`,
+                                  color: getCategoryColor(task.categoryId)
+                                }}
+                              >
+                                {categories.find(c => c.id === task.categoryId)?.name}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <motion.div
-                          whileHover={{ rotate: expandedTasks[task.id] ? 0 : 90 }}
-                          animate={{ rotate: expandedTasks[task.id] ? 180 : 0 }}
-                          transition={{ duration: 0.3, ease: "easeInOut" }}
-                        >
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                        </motion.div>
+                        
+                        <div className="flex items-center">
+                          <motion.div
+                            whileHover={{ rotate: expandedTasks[task.id] ? 0 : 90 }}
+                            animate={{ rotate: expandedTasks[task.id] ? 180 : 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                          >
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          </motion.div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <AnimatePresence>
-                  {expandedTasks[task.id] && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ 
-                        height: 'auto', 
-                        opacity: 1,
-                        transition: { 
-                          height: { duration: 0.3, ease: "easeOut" },
-                          opacity: { duration: 0.2, delay: 0.1 }
-                        }
-                      }}
-                      exit={{ 
-                        height: 0, 
-                        opacity: 0,
-                        transition: { 
-                          height: { duration: 0.2, ease: "easeInOut" },
-                          opacity: { duration: 0.1 }
-                        }
-                      }}
-                      className="overflow-hidden"
-                      layout
-                    >
-                      <div className="pt-3 space-y-3 pl-8">
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {task.description}
-                          </p>
-                        )}
-                        
-                        {task.progress !== undefined && (
-                          <div className="space-y-1 mt-3">
-                            <div className="flex justify-between text-xs">
-                              <span>Progress</span>
-                              <span>{task.progress}%</span>
+                  
+                  <AnimatePresence>
+                    {expandedTasks[task.id] && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ 
+                          height: 'auto', 
+                          opacity: 1,
+                          transition: { 
+                            height: { duration: 0.3, ease: "easeOut" },
+                            opacity: { duration: 0.2, delay: 0.1 }
+                          }
+                        }}
+                        exit={{ 
+                          height: 0, 
+                          opacity: 0,
+                          transition: { 
+                            height: { duration: 0.2, ease: "easeInOut" },
+                            opacity: { duration: 0.1 }
+                          }
+                        }}
+                        className="overflow-hidden"
+                        layout
+                      >
+                        <div className="pt-3 space-y-3 pl-8">
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {task.description}
+                            </p>
+                          )}
+                          
+                          {/* Subtasks section */}
+                          {hasSubtasks && (
+                            <div className="mt-3 space-y-2">
+                              <h4 className="text-sm font-medium flex items-center">
+                                <ListTodo className="h-3.5 w-3.5 mr-1.5" />
+                                Subtasks ({completedSubtasks}/{subtasks.length})
+                              </h4>
+                              <div className="space-y-2 pl-1">
+                                {subtasks.map(subtask => (
+                                  <div 
+                                    key={subtask.id}
+                                    className="flex items-center gap-2 p-2 border rounded-md bg-card/50"
+                                  >
+                                    <Checkbox
+                                      checked={subtask.completed}
+                                      onCheckedChange={(checked) => 
+                                        handleCompleteTask(subtask.id, checked as boolean)
+                                      }
+                                      className={subtask.completed ? '' : getPriorityColor(subtask.priority)}
+                                    />
+                                    <span className={`flex-grow text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                      {subtask.title}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {subtask.priority.charAt(0).toUpperCase() + subtask.priority.slice(1)}
+                                    </Badge>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteTask(subtask.id)}
+                                      className="h-6 w-6"
+                                    >
+                                      <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <Progress value={task.progress} className="h-2" />
-                          </div>
-                        )}
-                        
-                        {task.tags && task.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {task.tags.map(tagId => {
-                              const tag = tags.find(t => t.id === tagId);
-                              return tag ? (
-                                <Badge key={tagId} variant="outline" className="text-xs">
-                                  <Tag className="h-3 w-3 mr-1" />
-                                  {tag.name}
-                                </Badge>
-                              ) : null;
-                            })}
-                          </div>
-                        )}
-                        
-                        {/* Improved action buttons layout */}
-                        <div className="mt-4 border-t pt-3">
-                          <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
-                            <motion.div 
-                              whileHover={{ scale: 1.03 }} 
-                              whileTap={{ scale: 0.97 }}
-                              className="col-span-1 md:w-auto"
-                            >
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="w-full md:w-auto md:px-4 bg-background hover:bg-secondary transition-all duration-200"
-                                onClick={() => handleOpenDetails(task)}
+                          )}
+                          
+                          {task.progress !== undefined && (
+                            <div className="space-y-1 mt-3">
+                              <div className="flex justify-between text-xs">
+                                <span>Progress</span>
+                                <span>{task.progress}%</span>
+                              </div>
+                              <Progress value={task.progress} className="h-2" />
+                            </div>
+                          )}
+                          
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-3">
+                              {task.tags.map(tagId => {
+                                const tag = tags.find(t => t.id === tagId);
+                                return tag ? (
+                                  <Badge key={tagId} variant="outline" className="text-xs">
+                                    <Tag className="h-3 w-3 mr-1" />
+                                    {tag.name}
+                                  </Badge>
+                                ) : null;
+                              })}
+                            </div>
+                          )}
+                          
+                          {/* Improved action buttons layout */}
+                          <div className="mt-4 border-t pt-3">
+                            <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
+                              <motion.div 
+                                whileHover={{ scale: 1.03 }} 
+                                whileTap={{ scale: 0.97 }}
+                                className="col-span-1 md:w-auto"
                               >
-                                <Edit className="h-3.5 w-3.5 mr-1.5" />
-                                Edit
-                              </Button>
-                            </motion.div>
-                            
-                            <motion.div 
-                              whileHover={{ scale: 1.03 }} 
-                              whileTap={{ scale: 0.97 }}
-                              className="col-span-1 md:w-auto md:ml-2"
-                            >
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                className="w-full md:w-auto md:px-4 hover:bg-red-600 transition-all duration-200"
-                                onClick={() => handleDeleteTask(task.id)}
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="w-full md:w-auto md:px-4 bg-background hover:bg-secondary transition-all duration-200"
+                                  onClick={() => handleOpenDetails(task)}
+                                >
+                                  <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                  Edit
+                                </Button>
+                              </motion.div>
+                              
+                              <motion.div 
+                                whileHover={{ scale: 1.03 }} 
+                                whileTap={{ scale: 0.97 }}
+                                className="col-span-1 md:w-auto md:ml-2"
                               >
-                                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                                Delete
-                              </Button>
-                            </motion.div>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  className="w-full md:w-auto md:px-4 hover:bg-red-600 transition-all duration-200"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                  Delete
+                                </Button>
+                              </motion.div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Collapsible>
-            </motion.div>
-          ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Collapsible>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </motion.div>
       

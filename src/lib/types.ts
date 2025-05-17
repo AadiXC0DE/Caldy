@@ -31,6 +31,31 @@ export type Event = {
   reminder?: Date;
 };
 
+export type RecurringPattern = {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  endDate?: Date;
+  occurrences?: number;
+  daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, etc.
+};
+
+export type TimeTracking = {
+  estimatedMinutes?: number;
+  actualMinutes?: number;
+  pomodoroCount?: number;
+  pomodoroSettings?: {
+    workMinutes: number;
+    breakMinutes: number;
+    longBreakMinutes: number;
+    longBreakInterval: number;
+  };
+  sessions?: {
+    date: Date;
+    durationMinutes: number;
+    type: 'work' | 'break' | 'long-break';
+  }[];
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -42,6 +67,31 @@ export type Task = {
   categoryId?: string;
   tags?: string[];
   progress?: number;
+  order?: number;
+  parentId?: string;
+  subtasks?: string[];
+  recurring?: RecurringPattern;
+  timeTracking?: TimeTracking;
+  isTemplate?: boolean;
+  dependsOn?: string[];
+};
+
+export type TaskView = {
+  id: string;
+  name: string;
+  filters: {
+    searchTerm?: string;
+    priority?: Priority | 'all';
+    category?: string | 'all';
+    completed?: 'all' | 'completed' | 'incomplete';
+    tags?: string[];
+    dueDateRange?: {
+      start?: Date;
+      end?: Date;
+    };
+  };
+  sortBy: 'dueDate' | 'priority' | 'title' | 'createdAt' | 'order' | 'progress';
+  sortDirection: 'asc' | 'desc';
 };
 
 export type CalendarView = 'month' | 'week' | 'day' | 'list'; 
