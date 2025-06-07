@@ -3,7 +3,6 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import { RecurringPattern } from '@/lib/types';
 import {
   FormControl,
   FormField,
@@ -18,9 +17,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { UseFormReturn } from 'react-hook-form';
+import { FormValues } from './TaskDetailDialog';
 
 interface RecurringTaskSettingsProps {
-  form: UseFormReturn<any>;
+  form: UseFormReturn<FormValues>;
   showRecurring: boolean;
   setShowRecurring: (show: boolean) => void;
 }
@@ -110,7 +110,7 @@ export function RecurringTaskSettings({
                         type="number"
                         min={1}
                         max={99}
-                        {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                       />
                     </FormControl>
@@ -215,7 +215,7 @@ export function RecurringTaskSettings({
                       type="number"
                       min={1}
                       placeholder="Never ending"
-                      {...field}
+                      value={field.value || ''}
                       onChange={(e) => {
                         const value = e.target.value ? parseInt(e.target.value) : undefined;
                         field.onChange(value);

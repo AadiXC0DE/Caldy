@@ -20,7 +20,7 @@ interface AppContextProps {
   
   // New Task Features
   getSubtasks: (taskId: string) => Task[];
-  addSubtask: (parentId: string, task: Omit<Task, 'id' | 'parentId'>) => void;
+  addSubtask: (parentId: string, task: Omit<Task, 'id' | 'parentId'>) => string;
   reorderTasks: (taskIds: string[]) => void;
   duplicateTask: (taskId: string) => void;
   batchUpdateTasks: (taskIds: string[], updates: Partial<Task>) => void;
@@ -450,32 +450,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Task handlers
   const addTask = (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: uuidv4() };
-    setTasks(prev => [...prev, newTask]);
-    
-    // If it has a parent, update the parent's subtasks array
-    if (task.parentId) {
-      updateTask(task.parentId, {
-        subtasks: [...(tasks.find(t => t.id === task.parentId)?.subtasks || []), newTask.id]
-      });
-    }
+    setTasks(prev => {
+      const updatedTasks = [...prev, newTask];
+      
+      // If it has a parent, update the parent's subtasks array
+      if (task.parentId) {
+        const parentIndex = updatedTasks.findIndex(t => t.id === task.parentId);
+        if (parentIndex !== -1) {
+          const parent = updatedTasks[parentIndex];
+          updatedTasks[parentIndex] = {
+            ...parent,
+            subtasks: [...(parent.subtasks || []), newTask.id]
+          };
+        }
+      }
+      
+      return updatedTasks;
+    });
     
     return newTask.id;
   };
   
   const updateTask = (id: string, updatedData: Partial<Task>) => {
-    setTasks(tasks.map(task => 
+    setTasks(prev => prev.map(task => 
       task.id === id ? { ...task, ...updatedData } : task
     ));
   };
   
   const deleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
+    setTasks(prev => {
+      // Remove the task and any references to it in parent subtasks
+      const updatedTasks = prev.filter(task => task.id !== id);
+      
+      // Remove this task from any parent's subtasks array
+      return updatedTasks.map(task => {
+        if (task.subtasks?.includes(id)) {
+          return {
+            ...task,
+            subtasks: task.subtasks.filter(subtaskId => subtaskId !== id)
+          };
+        }
+        return task;
+      });
+    });
   };
   
   const completeTask = (id: string, completed: boolean) => {
-    setTasks(tasks.map(task => 
+    setTasks(prev => prev.map(task => 
       task.id === id ? { ...task, completed } : task
     ));
+    
+    // Update parent progress if this is a subtask
+    const task = tasks.find(t => t.id === id);
+    if (task?.parentId) {
+      updateParentTaskProgress(task.parentId);
+    }
   };
   
   const updateTaskProgress = (id: string, progress: number) => {
@@ -531,19 +560,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const addSubtask = (parentId: string, subtask: Omit<Task, 'id' | 'parentId'>) => {
     const parent = tasks.find(t => t.id === parentId);
-    if (!parent) return;
+    if (!parent) return '';
     
     const newSubtaskId = addTask({
       ...subtask,
       parentId
     });
     
-    // Update parent's subtasks array
-    const updatedSubtasks = [...(parent.subtasks || []), newSubtaskId];
-    updateTask(parentId, { subtasks: updatedSubtasks });
-    
     // Update parent's progress
-    updateParentTaskProgress(parentId);
+    setTimeout(() => {
+      updateParentTaskProgress(parentId);
+    }, 0);
+    
+    return newSubtaskId;
   };
   
   const reorderTasks = (taskIds: string[]) => {

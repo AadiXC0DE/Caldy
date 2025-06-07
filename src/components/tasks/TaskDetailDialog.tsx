@@ -58,7 +58,7 @@ const formSchema = z.object({
   }).optional().nullable(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+export type FormValues = z.infer<typeof formSchema>;
 
 interface TaskDetailDialogProps {
   open: boolean;
@@ -113,7 +113,7 @@ export default function TaskDetailDialog({
       setSelectedTags(task.tags || []);
       setShowProgress(task.progress !== undefined);
       setShowRecurring(!!task.recurring);
-      setShowSubtasks(true);
+      setShowSubtasks(!!task.subtasks && task.subtasks.length > 0);
     } else if (open && !task) {
       form.reset(defaultValues);
       setSelectedTags([]);
@@ -134,6 +134,7 @@ export default function TaskDetailDialog({
       categoryId: data.categoryId === 'none' ? undefined : data.categoryId,
       tags: selectedTags,
       recurring: showRecurring ? data.recurring as RecurringPattern : undefined,
+      subtasks: [], // Will be handled by AppContext
     };
 
     if (showProgress) {
@@ -379,7 +380,7 @@ export default function TaskDetailDialog({
               </label>
             </div>
 
-            {showSubtasks && (
+            {(showSubtasks || (task && task.subtasks && task.subtasks.length > 0)) && (
               <div className="border rounded-md p-4 bg-muted/10">
                 <h3 className="text-sm font-medium mb-2">Subtasks</h3>
                 {task ? (
@@ -399,13 +400,6 @@ export default function TaskDetailDialog({
             </DialogFooter>
           </form>
         </Form>
-        
-        {/* Subtasks (only for existing tasks) */}
-        {task && !showSubtasks && (
-          <div className="mt-6 pt-6 border-t">
-            <SubtaskList parentId={task.id} />
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
