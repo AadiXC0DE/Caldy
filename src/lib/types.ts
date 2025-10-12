@@ -68,8 +68,6 @@ export type Task = {
   tags?: string[];
   progress?: number;
   order?: number;
-  parentId?: string;
-  subtasks?: string[];
   recurring?: RecurringPattern;
   timeTracking?: TimeTracking;
   isTemplate?: boolean;

@@ -19,8 +19,6 @@ interface AppContextProps {
   updateTaskProgress: (id: string, progress: number) => void;
   
   // New Task Features
-  getSubtasks: (taskId: string) => Task[];
-  addSubtask: (parentId: string, task: Omit<Task, 'id' | 'parentId'>) => string;
   reorderTasks: (taskIds: string[]) => void;
   duplicateTask: (taskId: string) => void;
   batchUpdateTasks: (taskIds: string[], updates: Partial<Task>) => void;
@@ -225,9 +223,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadFromStorage('caldy-task-views', defaultTaskViews)
   );
   
-  const [activeTaskView, setActiveTaskView] = useState<string | null>(() => 
-    loadFromStorage('caldy-active-task-view', taskViews[0]?.id || null)
-  );
+  const [activeTaskView, setActiveTaskView] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null; // SSR: don't access localStorage
+    }
+    return loadFromStorage('caldy-active-task-view', null);
+  });
 
   // Timer state
   const [activeTimerTaskId, setActiveTimerTaskId] = useState<string | null>(null);
@@ -246,6 +247,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     saveToStorage('caldy-active-task-view', activeTaskView);
   }, [activeTaskView]);
+
+  // Set active task view after taskViews are loaded (client-side only)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && taskViews.length > 0 && activeTaskView === null) {
+      const storedViewId = loadFromStorage('caldy-active-task-view', null);
+      if (storedViewId && taskViews.find(v => v.id === storedViewId)) {
+        setActiveTaskView(storedViewId);
+      } else {
+        setActiveTaskView(taskViews[0]?.id || null);
+      }
+    }
+  }, [taskViews, activeTaskView, setActiveTaskView]);
 
   useEffect(() => {
     saveToStorage('caldy-pomodoro-settings', pomodoroSettings);
@@ -351,9 +364,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIcalEvents([]);
       return;
     }
-    
+
     setIsLoadingIcal(true);
-    
+
     try {
       // Fetch iCal data from proxy to avoid CORS issues
       const response = await fetch('/api/fetch-ical', {
@@ -363,17 +376,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         body: JSON.stringify({ url: icalUrl }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch iCal data');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch iCal data' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      setIcalEvents(data.events);
+      setIcalEvents(data.events || []);
       toast.success('Calendar imported successfully');
     } catch (error) {
       console.error('Error fetching iCal data:', error);
-      toast.error('Failed to import calendar');
+      toast.error(error instanceof Error ? error.message : 'Failed to import calendar');
       setIcalEvents([]);
     } finally {
       setIsLoadingIcal(false);
@@ -450,24 +464,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Task handlers
   const addTask = (task: Omit<Task, 'id'>) => {
     const newTask = { ...task, id: uuidv4() };
-    setTasks(prev => {
-      const updatedTasks = [...prev, newTask];
-      
-      // If it has a parent, update the parent's subtasks array
-      if (task.parentId) {
-        const parentIndex = updatedTasks.findIndex(t => t.id === task.parentId);
-        if (parentIndex !== -1) {
-          const parent = updatedTasks[parentIndex];
-          updatedTasks[parentIndex] = {
-            ...parent,
-            subtasks: [...(parent.subtasks || []), newTask.id]
-          };
-        }
-      }
-      
-      return updatedTasks;
-    });
-    
+
+    // Add regular task
+    setTasks(prev => [...prev, newTask]);
+
     return newTask.id;
   };
   
@@ -478,33 +478,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   const deleteTask = (id: string) => {
-    setTasks(prev => {
-      // Remove the task and any references to it in parent subtasks
-      const updatedTasks = prev.filter(task => task.id !== id);
-      
-      // Remove this task from any parent's subtasks array
-      return updatedTasks.map(task => {
-        if (task.subtasks?.includes(id)) {
-          return {
-            ...task,
-            subtasks: task.subtasks.filter(subtaskId => subtaskId !== id)
-          };
-        }
-        return task;
-      });
-    });
+    setTasks(prev => prev.filter(task => task.id !== id));
   };
   
   const completeTask = (id: string, completed: boolean) => {
-    setTasks(prev => prev.map(task => 
+    setTasks(prev => prev.map(task =>
       task.id === id ? { ...task, completed } : task
     ));
-    
-    // Update parent progress if this is a subtask
-    const task = tasks.find(t => t.id === id);
-    if (task?.parentId) {
-      updateParentTaskProgress(task.parentId);
-    }
   };
   
   const updateTaskProgress = (id: string, progress: number) => {
@@ -551,29 +531,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   // New Task Features
-  const getSubtasks = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task || !task.subtasks) return [];
-    
-    return tasks.filter(t => task.subtasks?.includes(t.id));
-  };
-  
-  const addSubtask = (parentId: string, subtask: Omit<Task, 'id' | 'parentId'>) => {
-    const parent = tasks.find(t => t.id === parentId);
-    if (!parent) return '';
-    
-    const newSubtaskId = addTask({
-      ...subtask,
-      parentId
-    });
-    
-    // Update parent's progress
-    setTimeout(() => {
-      updateParentTaskProgress(parentId);
-    }, 0);
-    
-    return newSubtaskId;
-  };
   
   const reorderTasks = (taskIds: string[]) => {
     // Update the order of each task
@@ -597,21 +554,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       completed: false
     });
     
-    // If the original has subtasks, duplicate those too
-    if (original.subtasks?.length) {
-      original.subtasks.forEach(subtaskId => {
-        const subtask = tasks.find(t => t.id === subtaskId);
-        if (subtask) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id, parentId, ...subtaskWithoutIds } = subtask;
-          addSubtask(newTaskId, {
-            ...subtaskWithoutIds,
-            title: subtask.title,
-            completed: false
-          });
-        }
-      });
-    }
     
     return newTaskId;
   };
@@ -732,9 +674,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dueDate: nextDueDate,
       date: nextDate,
       completed: false,
-      recurring: originalTask.recurring,
-      parentId: originalTask.parentId, // Preserve parent-child relationship
-      subtasks: [], // Don't copy subtasks to the next occurrence
+      recurring: originalTask.recurring
     });
   };
   
@@ -760,32 +700,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return nextDate;
   };
   
-  // Update parent task progress based on subtasks
-  const updateParentTaskProgress = (parentId: string) => {
-    const parent = tasks.find(t => t.id === parentId);
-    if (!parent || !parent.subtasks || parent.subtasks.length === 0) return;
-    
-    const subtasks = tasks.filter(t => parent.subtasks?.includes(t.id));
-    
-    if (subtasks.length === 0) return;
-    
-    // Calculate progress based on subtasks completion
-    const totalSubtasks = subtasks.length;
-    const completedSubtasks = subtasks.filter(t => t.completed).length;
-    const progressPercentage = Math.round((completedSubtasks / totalSubtasks) * 100);
-    
-    // Update the parent task
-    updateTask(parentId, { 
-      progress: progressPercentage,
-      // If all subtasks are complete, mark the parent as complete
-      completed: progressPercentage === 100
-    });
-    
-    // Recursively update any grandparent tasks
-    if (parent.parentId) {
-      updateParentTaskProgress(parent.parentId);
-    }
-  };
   
   return (
     <AppContext.Provider
@@ -805,8 +719,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTaskProgress,
         
         // New Task Features
-        getSubtasks,
-        addSubtask,
         reorderTasks,
         duplicateTask,
         batchUpdateTasks,

@@ -7,9 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { Task, RecurringPattern } from '@/lib/types';
+import { Task, RecurringPattern, Priority } from '@/lib/types';
 import { toast } from 'sonner';
-import { SubtaskList } from './SubtaskList';
 import { RecurringTaskSettings } from './RecurringTaskSettings';
 
 import {
@@ -75,7 +74,6 @@ export default function TaskDetailDialog({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showProgress, setShowProgress] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [showSubtasks, setShowSubtasks] = useState(false);
 
   const defaultValues: FormValues = {
     title: '',
@@ -113,13 +111,11 @@ export default function TaskDetailDialog({
       setSelectedTags(task.tags || []);
       setShowProgress(task.progress !== undefined);
       setShowRecurring(!!task.recurring);
-      setShowSubtasks(!!task.subtasks && task.subtasks.length > 0);
     } else if (open && !task) {
       form.reset(defaultValues);
       setSelectedTags([]);
       setShowProgress(false);
       setShowRecurring(false);
-      setShowSubtasks(false);
     }
   }, [open, task, form]);
 
@@ -134,7 +130,6 @@ export default function TaskDetailDialog({
       categoryId: data.categoryId === 'none' ? undefined : data.categoryId,
       tags: selectedTags,
       recurring: showRecurring ? data.recurring as RecurringPattern : undefined,
-      subtasks: [], // Will be handled by AppContext
     };
 
     if (showProgress) {
@@ -145,7 +140,10 @@ export default function TaskDetailDialog({
       updateTask(task.id, taskData);
       toast.success('Task updated successfully');
     } else {
-      addTask(taskData);
+      // Create the main task first
+      const newTaskId = addTask(taskData);
+
+
       toast.success('Task added successfully');
     }
 
@@ -366,32 +364,6 @@ export default function TaskDetailDialog({
               )}
             />
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="showSubtasks"
-                checked={showSubtasks}
-                onCheckedChange={(checked) => setShowSubtasks(!!checked)}
-              />
-              <label
-                htmlFor="showSubtasks"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Add subtasks
-              </label>
-            </div>
-
-            {(showSubtasks || (task && task.subtasks && task.subtasks.length > 0)) && (
-              <div className="border rounded-md p-4 bg-muted/10">
-                <h3 className="text-sm font-medium mb-2">Subtasks</h3>
-                {task ? (
-                  <SubtaskList parentId={task.id} />
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    You can add subtasks after creating the task.
-                  </div>
-                )}
-              </div>
-            )}
 
             <DialogFooter>
               <Button type="submit">
