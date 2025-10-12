@@ -20,15 +20,15 @@ interface AppContextProps {
   
   // New Task Features
   reorderTasks: (taskIds: string[]) => void;
-  duplicateTask: (taskId: string) => void;
+  duplicateTask: (taskId: string) => string;
   batchUpdateTasks: (taskIds: string[], updates: Partial<Task>) => void;
   toggleTaskTemplate: (taskId: string) => void;
-  createTaskFromTemplate: (templateId: string) => void;
+  createTaskFromTemplate: (templateId: string) => string;
   
   // Task Views
   taskViews: TaskView[];
   activeTaskView: string | null;
-  addTaskView: (view: Omit<TaskView, 'id'>) => void;
+  addTaskView: (view: Omit<TaskView, 'id'>) => string;
   updateTaskView: (id: string, view: Partial<TaskView>) => void;
   deleteTaskView: (id: string) => void;
   setActiveTaskView: (id: string | null) => void;
