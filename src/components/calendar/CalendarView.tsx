@@ -13,6 +13,7 @@ import listPlugin from '@fullcalendar/list';
 import AddEventDialog from './AddEventDialog';
 import IcalEventDialog from './IcalEventDialog';
 import { MonthYearPicker } from './MonthYearPicker';
+import { RecurringEditDialog } from './RecurringEditDialog';
 import { EventClickArg, EventDropArg, DatesSetArg } from '@fullcalendar/core';
 
 interface ICalEvent {
@@ -68,7 +69,9 @@ function CalendarViewClient({ showHeader = true }) {
   const { 
     events, 
     tasks, 
-    updateEvent, 
+    updateEvent,
+    updateRecurringEventInstance,
+    deleteRecurringEventInstance,
     categories,
     view,
     icalEvents,
@@ -88,6 +91,12 @@ function CalendarViewClient({ showHeader = true }) {
   const [isIcalEventOpen, setIsIcalEventOpen] = useState(false);
   const [selectedIcalEvent, setSelectedIcalEvent] = useState<ICalEvent | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isRecurringEditDialogOpen, setIsRecurringEditDialogOpen] = useState(false);
+  const [pendingRecurringEdit, setPendingRecurringEdit] = useState<{
+    originalEventId: string;
+    occurrenceDate?: string;
+  } | null>(null);
+  const [editingOccurrenceDate, setEditingOccurrenceDate] = useState<string | undefined>(undefined);
   
   // Effect to update calendar view when view changes
   useEffect(() => {
@@ -188,26 +197,199 @@ function CalendarViewClient({ showHeader = true }) {
     }
   };
   
-  // Convert our events to FullCalendar format
-  const fullCalendarEvents = events.map(event => {
-    const category = categories.find(cat => cat.id === event.categoryId);
-    return {
-      id: event.id,
-      title: event.title,
-      start: event.start,
-      end: event.end,
-      allDay: event.allDay,
-      backgroundColor: event.color || category?.color || '#4F46E5',
-      borderColor: event.color || category?.color || '#4F46E5',
-      extendedProps: {
-        description: event.description,
-        location: event.location,
-        categoryId: event.categoryId,
-        recurring: event.recurring,
-        tags: event.tags,
-      },
-    };
-  });
+  // Generate recurring event instances
+  const generateRecurringInstances = (event: typeof events[0], viewStart: Date, viewEnd: Date) => {
+    if (!event.recurring) return [event];
+    
+    const instances = [];
+    const { recurring } = event;
+    let currentDate = new Date(event.start);
+    
+    // Ensure we start from the event's original date
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
+    const duration = eventEnd.getTime() - eventStart.getTime();
+    
+    // Limit iterations to prevent infinite loops
+    let iterationCount = 0;
+    const maxIterations = 1000;
+    
+    while (currentDate <= viewEnd && iterationCount < maxIterations) {
+      iterationCount++;
+      
+      // Check if this occurrence is within the view range
+      if (currentDate >= viewStart || 
+          (currentDate < viewStart && new Date(currentDate.getTime() + duration) >= viewStart)) {
+        
+        // Check if we've passed the recurring end date
+        if (recurring.endDate && currentDate > new Date(recurring.endDate)) {
+          break;
+        }
+        
+        // Format the date as ISO string for exception lookup
+        const occurrenceDate = currentDate.toISOString().split('T')[0];
+        
+        // Check if this occurrence has an exception
+        const exception = recurring.exceptions?.find(ex => ex.date === occurrenceDate);
+        
+        // Skip this occurrence if it's marked as deleted
+        if (exception?.deleted) {
+          // Move to next occurrence before continuing
+          switch (recurring.frequency) {
+            case 'daily':
+              currentDate.setDate(currentDate.getDate() + recurring.interval);
+              break;
+            case 'weekly':
+              if (recurring.daysOfWeek && recurring.daysOfWeek.length > 0) {
+                currentDate.setDate(currentDate.getDate() + 1);
+              } else {
+                currentDate.setDate(currentDate.getDate() + 7 * recurring.interval);
+              }
+              break;
+            case 'monthly':
+              currentDate.setMonth(currentDate.getMonth() + recurring.interval);
+              break;
+            case 'yearly':
+              currentDate.setFullYear(currentDate.getFullYear() + recurring.interval);
+              break;
+          }
+          continue;
+        }
+        
+        // For weekly recurrence with specific days
+        if (recurring.frequency === 'weekly' && recurring.daysOfWeek && recurring.daysOfWeek.length > 0) {
+          const dayOfWeek = currentDate.getDay();
+          if (recurring.daysOfWeek.includes(dayOfWeek)) {
+            const instanceStart = new Date(currentDate);
+            const instanceEnd = new Date(currentDate.getTime() + duration);
+            
+            // Apply exception modifications if they exist
+            instances.push({
+              ...event,
+              title: exception?.title ?? event.title,
+              description: exception?.description ?? event.description,
+              location: exception?.location ?? event.location,
+              color: exception?.color ?? event.color,
+              categoryId: exception?.categoryId ?? event.categoryId,
+              start: exception?.start ? new Date(exception.start) : instanceStart,
+              end: exception?.end ? new Date(exception.end) : instanceEnd,
+              // Store the occurrence date for later identification
+              occurrenceDate,
+            });
+          }
+        } else {
+          // For other frequencies or weekly without specific days
+          const instanceStart = new Date(currentDate);
+          const instanceEnd = new Date(currentDate.getTime() + duration);
+          
+          // Apply exception modifications if they exist
+          instances.push({
+            ...event,
+            title: exception?.title ?? event.title,
+            description: exception?.description ?? event.description,
+            location: exception?.location ?? event.location,
+            color: exception?.color ?? event.color,
+            categoryId: exception?.categoryId ?? event.categoryId,
+            start: exception?.start ? new Date(exception.start) : instanceStart,
+            end: exception?.end ? new Date(exception.end) : instanceEnd,
+            // Store the occurrence date for later identification
+            occurrenceDate,
+          });
+        }
+      }
+      
+      // Calculate next occurrence
+      switch (recurring.frequency) {
+        case 'daily':
+          currentDate.setDate(currentDate.getDate() + recurring.interval);
+          break;
+        case 'weekly':
+          if (recurring.daysOfWeek && recurring.daysOfWeek.length > 0) {
+            // Move to next day and check if it matches
+            currentDate.setDate(currentDate.getDate() + 1);
+            
+            // If we've gone through a full week without matches, skip to next week
+            const startOfWeek = new Date(currentDate);
+            startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+            
+            // Check if current day is in the allowed days
+            const currentDay = currentDate.getDay();
+            if (!recurring.daysOfWeek.includes(currentDay)) {
+              // Find next allowed day
+              let foundNextDay = false;
+              for (let i = 1; i <= 7; i++) {
+                const testDate = new Date(currentDate);
+                testDate.setDate(testDate.getDate() + i);
+                const testDay = testDate.getDay();
+                
+                if (recurring.daysOfWeek.includes(testDay)) {
+                  currentDate = testDate;
+                  foundNextDay = true;
+                  break;
+                }
+              }
+              
+              if (!foundNextDay) {
+                // Should not happen, but safety fallback
+                currentDate.setDate(currentDate.getDate() + 7 * recurring.interval);
+              }
+            }
+          } else {
+            currentDate.setDate(currentDate.getDate() + 7 * recurring.interval);
+          }
+          break;
+        case 'monthly':
+          currentDate.setMonth(currentDate.getMonth() + recurring.interval);
+          break;
+        case 'yearly':
+          currentDate.setFullYear(currentDate.getFullYear() + recurring.interval);
+          break;
+      }
+    }
+    
+    return instances;
+  };
+  
+  // Get the current view date range (we'll use a wide range to cover the visible calendar)
+  const getViewDateRange = () => {
+    const start = new Date(currentDate);
+    start.setMonth(start.getMonth() - 2); // 2 months before
+    const end = new Date(currentDate);
+    end.setMonth(end.getMonth() + 3); // 3 months after
+    return { start, end };
+  };
+  
+  // Convert our events to FullCalendar format with recurring instances
+  // Use useMemo to recalculate when currentDate changes
+  const fullCalendarEvents = React.useMemo(() => {
+    const { start: viewStart, end: viewEnd } = getViewDateRange();
+    
+    return events.flatMap(event => {
+      const instances = generateRecurringInstances(event, viewStart, viewEnd);
+      
+      return instances.map((instance: any) => {
+        const category = categories.find(cat => cat.id === event.categoryId);
+        return {
+          id: instance.occurrenceDate ? `${event.id}-${instance.occurrenceDate}` : event.id,
+          title: instance.title,
+          start: instance.start,
+          end: instance.end,
+          allDay: instance.allDay,
+          backgroundColor: instance.color || category?.color || '#4F46E5',
+          borderColor: instance.color || category?.color || '#4F46E5',
+          extendedProps: {
+            description: instance.description,
+            location: instance.location,
+            categoryId: instance.categoryId,
+            recurring: instance.recurring,
+            tags: instance.tags,
+            originalEventId: event.id,
+            occurrenceDate: instance.occurrenceDate,
+          },
+        };
+      });
+    });
+  }, [events, categories, currentDate]);
   
   // Convert iCal events to FullCalendar format
   const icalCalendarEvents = icalEvents.map(event => {
@@ -311,10 +493,44 @@ function CalendarViewClient({ showHeader = true }) {
       return;
     }
     
+    // Check if it's a recurring event instance
+    const originalEventId = arg.event.extendedProps.originalEventId;
+    const occurrenceDate = arg.event.extendedProps.occurrenceDate;
+    
+    if (originalEventId && occurrenceDate) {
+      // It's a recurring event instance - open editor directly
+      // User will choose "this event" or "all events" when saving
+      setSelectedEventId(originalEventId);
+      setIsAddEventOpen(true);
+      return;
+    }
+    
     // Open event editing dialog for regular events
-    const eventId = arg.event.id;
+    const eventId = arg.event.extendedProps.originalEventId || arg.event.id;
     setSelectedEventId(eventId);
     setIsAddEventOpen(true);
+  };
+  
+  const handleEditThisOccurrence = () => {
+    if (!pendingRecurringEdit) return;
+    
+    // Set the occurrence date so AddEventDialog knows to edit only this instance
+    setEditingOccurrenceDate(pendingRecurringEdit.occurrenceDate);
+    setSelectedEventId(pendingRecurringEdit.originalEventId);
+    setIsAddEventOpen(true);
+    setIsRecurringEditDialogOpen(false);
+    setPendingRecurringEdit(null);
+  };
+  
+  const handleEditAllOccurrences = () => {
+    if (!pendingRecurringEdit) return;
+    
+    // Clear the occurrence date to edit the entire recurring event
+    setEditingOccurrenceDate(undefined);
+    setSelectedEventId(pendingRecurringEdit.originalEventId);
+    setIsAddEventOpen(true);
+    setIsRecurringEditDialogOpen(false);
+    setPendingRecurringEdit(null);
   };
   
   const handleEventDrop = (arg: EventDropArg) => {
@@ -425,14 +641,27 @@ function CalendarViewClient({ showHeader = true }) {
       
       <AddEventDialog 
         open={isAddEventOpen} 
-        onOpenChange={setIsAddEventOpen}
+        onOpenChange={(open) => {
+          setIsAddEventOpen(open);
+          if (!open) {
+            // Clear occurrence date when closing
+            setEditingOccurrenceDate(undefined);
+          }
+        }}
         defaultDate={defaultDate}
         editEvent={selectedEventId ? events.find(e => e.id === selectedEventId) : undefined}
+        occurrenceDate={editingOccurrenceDate}
       />
       <IcalEventDialog
         open={isIcalEventOpen}
         onOpenChange={setIsIcalEventOpen}
         event={selectedIcalEvent}
+      />
+      <RecurringEditDialog
+        open={isRecurringEditDialogOpen}
+        onOpenChange={setIsRecurringEditDialogOpen}
+        onEditThis={handleEditThisOccurrence}
+        onEditAll={handleEditAllOccurrences}
       />
     </div>
   );
