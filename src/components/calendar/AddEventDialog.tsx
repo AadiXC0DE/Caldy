@@ -36,6 +36,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
+import { RecurringEventSettings } from './RecurringEventSettings';
+import { RecurringEditDialog } from './RecurringEditDialog';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -46,19 +48,24 @@ const formSchema = z.object({
   allDay: z.boolean().default(false),
   categoryId: z.string().optional(),
   color: z.string().optional(),
-  recurring: z.boolean().default(false),
-  recurringFrequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
-  recurringInterval: z.coerce.number().min(1).optional(),
+  recurring: z.object({
+    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+    interval: z.number().min(1).default(1),
+    endDate: z.date().optional().nullable(),
+    occurrences: z.number().optional().nullable(),
+    daysOfWeek: z.array(z.number()).optional(),
+  }).optional().nullable(),
   tags: z.array(z.string()).optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+export type FormValues = z.infer<typeof formSchema>;
 
 interface AddEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
   editEvent?: Event;
+  occurrenceDate?: string; // ISO date string for editing specific recurring instance
 }
 
 export default function AddEventDialog({ 
@@ -66,22 +73,67 @@ export default function AddEventDialog({
   onOpenChange, 
   defaultDate = new Date(),
   editEvent,
+  occurrenceDate,
 }: AddEventDialogProps) {
-  const { addEvent, updateEvent, deleteEvent, categories} = useApp();
+  const { addEvent, updateEvent, deleteEvent, updateRecurringEventInstance, deleteRecurringEventInstance, categories} = useApp();
   const [showRecurring, setShowRecurring] = useState(false);
+  const [showRecurringSaveDialog, setShowRecurringSaveDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormValues | null>(null);
+
+  // If editing a specific occurrence, get the exception data
+  const getOccurrenceData = () => {
+    if (!editEvent || !occurrenceDate) return null;
+    
+    const exception = editEvent.recurring?.exceptions?.find(ex => ex.date === occurrenceDate);
+    return exception;
+  };
+
+  // Calculate the actual start and end dates for this occurrence
+  const getOccurrenceDates = () => {
+    if (!editEvent || !occurrenceDate) {
+      return { start: editEvent?.start || defaultDate, end: editEvent?.end || addHours(defaultDate, 1) };
+    }
+
+    // If there's an exception with custom dates, use those
+    const exception = occurrenceException;
+    if (exception?.start && exception?.end) {
+      return { start: new Date(exception.start), end: new Date(exception.end) };
+    }
+
+    // Otherwise, calculate the dates based on the occurrence date and original event times
+    const occurrenceDateObj = new Date(occurrenceDate);
+    const originalStart = new Date(editEvent.start);
+    const originalEnd = new Date(editEvent.end);
+
+    // Create new dates with the occurrence date but original times
+    const start = new Date(occurrenceDateObj);
+    start.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds());
+
+    const end = new Date(occurrenceDateObj);
+    end.setHours(originalEnd.getHours(), originalEnd.getMinutes(), originalEnd.getSeconds());
+
+    // If the event spans multiple days, adjust the end date
+    const daysDiff = Math.floor((originalEnd.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 0) {
+      end.setDate(end.getDate() + daysDiff);
+    }
+
+    return { start, end };
+  };
+
+  const occurrenceException = getOccurrenceData();
+  const { start: occurrenceStart, end: occurrenceEnd } = getOccurrenceDates();
 
   const defaultValues: FormValues = editEvent ? {
-    title: editEvent.title,
-    description: editEvent.description || '',
-    location: editEvent.location || '',
-    startDate: editEvent.start,
-    endDate: editEvent.end,
+    title: occurrenceException?.title ?? editEvent.title,
+    description: (occurrenceException?.description ?? editEvent.description) || '',
+    location: (occurrenceException?.location ?? editEvent.location) || '',
+    startDate: occurrenceStart,
+    endDate: occurrenceEnd,
     allDay: editEvent.allDay || false,
-    categoryId: editEvent.categoryId,
-    color: editEvent.color,
-    recurring: !!editEvent.recurring,
-    recurringFrequency: editEvent.recurring?.frequency,
-    recurringInterval: editEvent.recurring?.interval,
+    categoryId: occurrenceException?.categoryId ?? editEvent.categoryId,
+    color: occurrenceException?.color ?? editEvent.color,
+    recurring: occurrenceDate ? null : (editEvent.recurring || null), // Hide recurring options when editing single occurrence
     tags: editEvent.tags || [],
   } : {
     title: '',
@@ -92,9 +144,7 @@ export default function AddEventDialog({
     allDay: false,
     categoryId: undefined,
     color: undefined,
-    recurring: false,
-    recurringFrequency: undefined,
-    recurringInterval: undefined,
+    recurring: null,
     tags: [],
   };
 
@@ -114,10 +164,38 @@ export default function AddEventDialog({
 
   // Update UI when recurring checkbox changes
   React.useEffect(() => {
-    setShowRecurring(watchRecurring);
+    setShowRecurring(!!watchRecurring);
   }, [watchRecurring]);
 
   const onSubmit = (data: FormValues) => {
+    // If editing a recurring event (not a specific occurrence), ask user what to do
+    if (editEvent && editEvent.recurring && !occurrenceDate) {
+      setPendingFormData(data);
+      setShowRecurringSaveDialog(true);
+      return;
+    }
+
+    // If editing a specific occurrence, update only that instance
+    if (editEvent && occurrenceDate) {
+      updateRecurringEventInstance(editEvent.id, occurrenceDate, {
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        start: data.startDate,
+        end: data.endDate,
+        color: data.color,
+        categoryId: data.categoryId,
+      });
+      toast.success('Occurrence updated successfully');
+      onOpenChange(false);
+      return;
+    }
+
+    // Otherwise, proceed with normal event creation/update
+    saveEvent(data);
+  };
+
+  const saveEvent = (data: FormValues) => {
     const eventData: Omit<Event, 'id'> = {
       title: data.title,
       start: data.startDate,
@@ -130,10 +208,12 @@ export default function AddEventDialog({
       tags: data.tags,
     };
 
-    if (data.recurring && data.recurringFrequency && data.recurringInterval) {
+    if (data.recurring) {
       eventData.recurring = {
-        frequency: data.recurringFrequency,
-        interval: data.recurringInterval,
+        frequency: data.recurring.frequency,
+        interval: data.recurring.interval,
+        endDate: data.recurring.endDate || undefined,
+        daysOfWeek: data.recurring.daysOfWeek,
       };
     }
 
@@ -150,8 +230,14 @@ export default function AddEventDialog({
 
   const handleDelete = () => {
     if (editEvent) {
-      deleteEvent(editEvent.id);
-      toast.success('Event deleted successfully');
+      // If deleting a specific occurrence
+      if (occurrenceDate) {
+        deleteRecurringEventInstance(editEvent.id, occurrenceDate);
+        toast.success('Occurrence deleted successfully');
+      } else {
+        deleteEvent(editEvent.id);
+        toast.success('Event deleted successfully');
+      }
       onOpenChange(false);
     }
   };
@@ -161,8 +247,13 @@ export default function AddEventDialog({
       <DialogContent className="sm:max-w-[525px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {editEvent ? 'Edit Event' : 'Add New Event'}
+            {editEvent ? (occurrenceDate ? 'Edit This Occurrence' : 'Edit Event') : 'Add New Event'}
           </DialogTitle>
+          {occurrenceDate && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Editing occurrence on {format(new Date(occurrenceDate), 'PPP')}
+            </p>
+          )}
         </DialogHeader>
 
         <Form {...form}>
@@ -632,8 +723,17 @@ export default function AddEventDialog({
                   </div>
                   <FormControl>
                     <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+                      checked={!!field.value}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          field.onChange({
+                            frequency: 'daily',
+                            interval: 1,
+                          });
+                        } else {
+                          field.onChange(null);
+                        }
+                      }}
                     />
                   </FormControl>
                 </FormItem>
@@ -646,53 +746,13 @@ export default function AddEventDialog({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 overflow-hidden"
+                  className="overflow-hidden"
                 >
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="recurringFrequency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Frequency</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="recurringInterval"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Every</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={1} 
-                              placeholder="1" 
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <RecurringEventSettings 
+                    form={form} 
+                    showRecurring={showRecurring}
+                    setShowRecurring={setShowRecurring}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -726,6 +786,39 @@ export default function AddEventDialog({
           </form>
         </Form>
       </DialogContent>
+
+      <RecurringEditDialog
+        open={showRecurringSaveDialog}
+        onOpenChange={setShowRecurringSaveDialog}
+        onEditThis={() => {
+          // Save as single occurrence exception
+          if (pendingFormData && editEvent) {
+            // Get the current start date as the occurrence date
+            const occDate = pendingFormData.startDate.toISOString().split('T')[0];
+            updateRecurringEventInstance(editEvent.id, occDate, {
+              title: pendingFormData.title,
+              description: pendingFormData.description,
+              location: pendingFormData.location,
+              start: pendingFormData.startDate,
+              end: pendingFormData.endDate,
+              color: pendingFormData.color,
+              categoryId: pendingFormData.categoryId,
+            });
+            toast.success('This occurrence updated successfully');
+          }
+          setShowRecurringSaveDialog(false);
+          setPendingFormData(null);
+          onOpenChange(false);
+        }}
+        onEditAll={() => {
+          // Save all occurrences
+          if (pendingFormData) {
+            saveEvent(pendingFormData);
+          }
+          setShowRecurringSaveDialog(false);
+          setPendingFormData(null);
+        }}
+      />
     </Dialog>
   );
 } 

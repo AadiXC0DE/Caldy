@@ -11,6 +11,19 @@ export type Tag = {
   name: string;
 };
 
+export type RecurringException = {
+  date: string; // ISO date string for the occurrence date
+  deleted?: boolean; // If true, this occurrence is deleted
+  // Modified fields for this specific occurrence
+  title?: string;
+  description?: string;
+  location?: string;
+  start?: Date;
+  end?: Date;
+  color?: string;
+  categoryId?: string;
+};
+
 export type Event = {
   id: string;
   title: string;
@@ -25,6 +38,7 @@ export type Event = {
     interval: number;
     endDate?: Date;
     daysOfWeek?: number[];
+    exceptions?: RecurringException[]; // Exceptions for specific occurrences
   };
   tags?: string[];
   color?: string;
