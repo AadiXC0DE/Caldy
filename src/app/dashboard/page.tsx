@@ -13,7 +13,6 @@ import CalendarView from '@/components/calendar/CalendarView';
 import TaskList from '@/components/tasks/TaskList';
 import AddEventDialog from '@/components/calendar/AddEventDialog';
 import AddTaskDialog from '@/components/tasks/AddTaskDialog';
-import { TaskStats } from '@/components/tasks/TaskStats';
 
 function DashboardPageClient() {
   const { events, tasks, categories } = useApp();

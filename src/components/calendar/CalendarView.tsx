@@ -62,7 +62,27 @@ interface FestivalEvent {
 
 interface CalendarViewProps {
   showHeader?: boolean;
-  [key: string]: unknown; // to be fixed later
+}
+
+// Extended type for recurring event instances
+interface RecurringEventInstance {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay?: boolean;
+  description?: string;
+  location?: string;
+  categoryId?: string;
+  recurring?: {
+    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    interval: number;
+    endDate?: Date;
+    daysOfWeek?: number[];
+  };
+  tags?: string[];
+  color?: string;
+  occurrenceDate?: string;
 }
 
 function CalendarViewClient({ showHeader = true }) {
@@ -70,8 +90,6 @@ function CalendarViewClient({ showHeader = true }) {
     events, 
     tasks, 
     updateEvent,
-    updateRecurringEventInstance,
-    deleteRecurringEventInstance,
     categories,
     view,
     icalEvents,
@@ -198,10 +216,10 @@ function CalendarViewClient({ showHeader = true }) {
   };
   
   // Generate recurring event instances
-  const generateRecurringInstances = (event: typeof events[0], viewStart: Date, viewEnd: Date) => {
-    if (!event.recurring) return [event];
+  const generateRecurringInstances = (event: typeof events[0], viewStart: Date, viewEnd: Date): RecurringEventInstance[] => {
+    if (!event.recurring) return [event as RecurringEventInstance];
     
-    const instances = [];
+    const instances: RecurringEventInstance[] = [];
     const { recurring } = event;
     let currentDate = new Date(event.start);
     
@@ -367,7 +385,7 @@ function CalendarViewClient({ showHeader = true }) {
     return events.flatMap(event => {
       const instances = generateRecurringInstances(event, viewStart, viewEnd);
       
-      return instances.map((instance: any) => {
+      return instances.map((instance) => {
         const category = categories.find(cat => cat.id === event.categoryId);
         return {
           id: instance.occurrenceDate ? `${event.id}-${instance.occurrenceDate}` : event.id,
@@ -389,6 +407,7 @@ function CalendarViewClient({ showHeader = true }) {
         };
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, categories, currentDate]);
   
   // Convert iCal events to FullCalendar format

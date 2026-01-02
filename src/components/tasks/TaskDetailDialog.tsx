@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { Task, RecurringPattern, Priority } from '@/lib/types';
+import { Task, RecurringPattern } from '@/lib/types';
 import { toast } from 'sonner';
 import { RecurringTaskSettings } from './RecurringTaskSettings';
 
@@ -117,6 +117,7 @@ export default function TaskDetailDialog({
       setShowProgress(false);
       setShowRecurring(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task, form]);
 
   const onSubmit = (data: FormValues) => {
@@ -140,9 +141,8 @@ export default function TaskDetailDialog({
       updateTask(task.id, taskData);
       toast.success('Task updated successfully');
     } else {
-      // Create the main task first
-      const newTaskId = addTask(taskData);
-
+      // Create the main task
+      addTask(taskData);
 
       toast.success('Task added successfully');
     }

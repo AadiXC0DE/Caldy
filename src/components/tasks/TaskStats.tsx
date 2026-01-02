@@ -11,7 +11,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   ChartLegend,
-  ChartLegendContent,
   type ChartConfig,
 } from '@/components/ui/chart';
 import {
@@ -23,8 +22,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  LineChart,
-  Line
 } from 'recharts';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { CheckSquare, Trash2, BarChart3, ChevronUp, ChevronDown } from 'lucide-react';
@@ -197,11 +194,6 @@ export function TaskStats() {
     if (totalTasks === 0) return 0;
     return Math.round((completedTasks / totalTasks) * 100);
   }, [tasks]);
-
-  const handleSelectAll = () => {
-    const allTaskIds = tasks.map(task => task.id);
-    setSelectedTasks(selectedTasks.length === allTaskIds.length ? [] : allTaskIds);
-  };
 
   const handleBatchComplete = () => {
     if (selectedTasks.length > 0) {
