@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, Suspense } from 'reac
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
-import { CheckSquare, PlusCircle, Search, Filter, BarChart3, ChevronDown } from 'lucide-react';
+import { CheckSquare, PlusCircle, Search, Filter, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+
 import { Separator } from '@/components/ui/separator';
 import { Priority } from '@/lib/types';
 import TaskList from '@/components/tasks/TaskList';
@@ -22,7 +22,7 @@ import AddTaskDialog from '@/components/tasks/AddTaskDialog';
 import { useSearchParams } from 'next/navigation';
 import TaskDetailDialog from '@/components/tasks/TaskDetailDialog';
 import { TaskStats } from '@/components/tasks/TaskStats';
-import { TaskTemplates } from '@/components/tasks/TaskTemplates';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +43,6 @@ function TasksPageClient() {
   const [filterCategory, setFilterCategory] = useState<string | 'all'>('all');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'completed' | 'incomplete'>('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [showAdvancedStats, setShowAdvancedStats] = useState(false);
   const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const taskId = searchParams.get('task');
@@ -81,7 +80,7 @@ function TasksPageClient() {
       setFilterCategory(view.filters.category || 'all');
       setFilterCompleted(view.filters.completed || 'all');
     }
-  }, [taskViews, setActiveTaskView, mounted]);
+  }, [taskViews, setActiveTaskView]);
   
   const handleSaveCurrentView = useCallback(() => {
     const name = prompt('Enter a name for this view:');
@@ -98,7 +97,7 @@ function TasksPageClient() {
         sortDirection: 'asc'
       });
     }
-  }, [addTaskView, searchTerm, filterPriority, filterCategory, filterCompleted, mounted]);
+  }, [addTaskView, searchTerm, filterPriority, filterCategory, filterCompleted]);
 
   // Filter tasks based on search term and filters
   const filteredTasks = useMemo(() => {
@@ -137,7 +136,7 @@ function TasksPageClient() {
         {view.name}
       </DropdownMenuItem>
     ));
-  }, [taskViews, handleTaskViewChange, mounted]);
+  }, [taskViews, handleTaskViewChange]);
 
   // Calculate basic stats for the header
   const basicStats = useMemo(() => {

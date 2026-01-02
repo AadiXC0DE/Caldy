@@ -21,8 +21,8 @@ import { FormValues } from './AddEventDialog';
 
 interface RecurringTaskSettingsProps {
   form: UseFormReturn<FormValues>;
-  showRecurring: boolean;
-  setShowRecurring: (show: boolean) => void;
+  showRecurring?: boolean;
+  setShowRecurring?: (show: boolean) => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -37,8 +37,6 @@ const DAYS_OF_WEEK = [
 
 export function RecurringEventSettings({ 
   form, 
-  showRecurring, 
-  setShowRecurring 
 }: RecurringTaskSettingsProps) {
   const frequency = form.watch('recurring.frequency');
   

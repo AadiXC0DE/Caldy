@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Event, Task, Category, Tag, CalendarView, TaskView, RecurringPattern, TimeTracking } from '@/lib/types';
 import { toast } from 'react-hot-toast';
+import * as dbOps from '@/lib/db';
+import { db } from '@/lib/db';
 
 interface AppContextProps {
   // Events
@@ -97,6 +99,8 @@ interface AppContextProps {
   refreshFestivals: () => Promise<void>;
   isLoadingFestivals: boolean;
   availableCountries: { countryCode: string; name: string }[];
+  // Database loading state
+  isLoading: boolean;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -158,135 +162,43 @@ const defaultPomodoroSettings = {
   longBreakInterval: 4
 };
 
-// Helper function to load data from localStorage
-const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
-  if (typeof window === 'undefined') return defaultValue;
-  
-  try {
-    const storedValue = localStorage.getItem(key);
-    if (!storedValue) return defaultValue;
-    
-    // Parse the JSON and convert date strings back to Date objects
-    const parsedValue = JSON.parse(storedValue, (key, value) => {
-      // Check if the value looks like an ISO date string
-      if (typeof value === 'string' && 
-          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
-        return new Date(value);
-      }
-      return value;
-    });
-    
-    return parsedValue;
-  } catch (error) {
-    console.error(`Error loading ${key} from localStorage:`, error);
-    return defaultValue;
-  }
-};
 
-// Helper function to save data to localStorage
-const saveToStorage = <T,>(key: string, value: T): void => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`Error saving ${key} to localStorage:`, error);
-  }
-};
+
+// Helper function to sync data to IndexedDB is removed in favor of direct DB operations
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state with data from localStorage or defaults
-  const [events, setEvents] = useState<Event[]>(() => 
-    loadFromStorage('caldy-events', [])
-  );
-  
-  const [tasks, setTasks] = useState<Task[]>(() => 
-    loadFromStorage('caldy-tasks', [])
-  );
-  
-  const [categories, setCategories] = useState<Category[]>(() => 
-    loadFromStorage('caldy-categories', defaultCategories)
-  );
-  
-  const [tags, setTags] = useState<Tag[]>(() => 
-    loadFromStorage('caldy-tags', defaultTags)
-  );
-  
-  const [view, setView] = useState<CalendarView>(() => 
-    loadFromStorage('caldy-view', 'month' as CalendarView)
-  );
-  
-  const [darkMode, setDarkMode] = useState<boolean>(() => 
-    loadFromStorage('caldy-dark-mode', false)
-  );
+  // Database loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const isInitialized = useRef(false);
+
+  // Initialize state with default values (will be populated from DB)
+  const [events, setEvents] = useState<Event[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [categories, setCategories] = useState<Category[]>(defaultCategories);
+  const [tags, setTags] = useState<Tag[]>(defaultTags);
+  const [view, setView] = useState<CalendarView>('month');
+  const [darkMode, setDarkMode] = useState<boolean>(false);
 
   // Task Views
-  const [taskViews, setTaskViews] = useState<TaskView[]>(() => 
-    loadFromStorage('caldy-task-views', defaultTaskViews)
-  );
-  
-  const [activeTaskView, setActiveTaskView] = useState<string | null>(() => {
-    if (typeof window === 'undefined') {
-      return null; // SSR: don't access localStorage
-    }
-    return loadFromStorage('caldy-active-task-view', null);
-  });
+  const [taskViews, setTaskViews] = useState<TaskView[]>(defaultTaskViews);
+  const [activeTaskView, setActiveTaskView] = useState<string | null>(null);
 
   // Timer state
   const [activeTimerTaskId, setActiveTimerTaskId] = useState<string | null>(null);
   const [timerStatus, setTimerStatus] = useState<'stopped' | 'running' | 'paused'>('stopped');
   const [timerType, setTimerType] = useState<'regular' | 'pomodoro'>('regular');
   const [timerSessionType, setTimerSessionType] = useState<'work' | 'break' | 'long-break'>('work');
-  const [pomodoroSettings, setPomodoroSettings] = useState(() => 
-    loadFromStorage('caldy-pomodoro-settings', defaultPomodoroSettings)
-  );
-  
-  // Save task views to localStorage whenever they change
-  useEffect(() => {
-    saveToStorage('caldy-task-views', taskViews);
-  }, [taskViews]);
-
-  useEffect(() => {
-    saveToStorage('caldy-active-task-view', activeTaskView);
-  }, [activeTaskView]);
-
-  // Set active task view after taskViews are loaded (client-side only)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && taskViews.length > 0 && activeTaskView === null) {
-      const storedViewId = loadFromStorage('caldy-active-task-view', null);
-      if (storedViewId && taskViews.find(v => v.id === storedViewId)) {
-        setActiveTaskView(storedViewId);
-      } else {
-        setActiveTaskView(taskViews[0]?.id || null);
-      }
-    }
-  }, [taskViews, activeTaskView, setActiveTaskView]);
-
-  useEffect(() => {
-    saveToStorage('caldy-pomodoro-settings', pomodoroSettings);
-  }, [pomodoroSettings]);
+  const [pomodoroSettings, setPomodoroSettings] = useState(defaultPomodoroSettings);
   
   // Add iCal state
-  const [icalUrl, setIcalUrl] = useState<string | null>(() => 
-    loadFromStorage('caldy-ical-url', null)
-  );
-  const [icalEvents, setIcalEvents] = useState<Event[]>(() => 
-    loadFromStorage('caldy-ical-events', [])
-  );
+  const [icalUrl, setIcalUrl] = useState<string | null>(null);
+  const [icalEvents, setIcalEvents] = useState<Event[]>([]);
   const [isLoadingIcal, setIsLoadingIcal] = useState(false);
   
-  const [festivals, setFestivals] = useState<Event[]>(() => 
-    loadFromStorage('caldy-festivals', [])
-  );
-  const [showFestivals, setShowFestivals] = useState<boolean>(() => 
-    loadFromStorage('caldy-show-festivals', true)
-  );
-  const [festivalCountry, setFestivalCountry] = useState<string>(() => 
-    loadFromStorage('caldy-festival-country', 'US')
-  );
-  const [festivalColor, setFestivalColor] = useState<string>(() => 
-    loadFromStorage('caldy-festival-color', '#FF5722')
-  );
+  const [festivals, setFestivals] = useState<Event[]>([]);
+  const [showFestivals, setShowFestivals] = useState<boolean>(true);
+  const [festivalCountry, setFestivalCountry] = useState<string>('US');
+  const [festivalColor, setFestivalColor] = useState<string>('#FF5722');
   const [isLoadingFestivals, setIsLoadingFestivals] = useState(false);
   const [availableCountries, setAvailableCountries] = useState<{ countryCode: string; name: string }[]>([]);
   
@@ -306,58 +218,155 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     fetchCountries();
   }, []);
-  
-  // Save state to localStorage whenever it changes
+
+  // Initialize IndexedDB and migrate data
   useEffect(() => {
-    saveToStorage('caldy-events', events);
+    const initializeDB = async () => {
+      try {
+        await dbOps.migrateFromLocalStorage();
+        
+        // Load data from IndexedDB if available
+        const [dbEvents, dbTasks, dbCategories, dbTags, dbTaskViews] = await Promise.all([
+          dbOps.getAllEvents(),
+          dbOps.getAllTasks(),
+          dbOps.getAllCategories(),
+          dbOps.getAllTags(),
+          dbOps.getAllTaskViews(),
+        ]);
+        
+        if (dbEvents.length > 0) setEvents(dbEvents);
+        if (dbTasks.length > 0) setTasks(dbTasks);
+        if (dbCategories.length > 0) setCategories(dbCategories);
+        if (dbTags.length > 0) setTags(dbTags);
+        if (dbTaskViews.length > 0) setTaskViews(dbTaskViews);
+        
+        // Load settings from IndexedDB
+        const [icalUrlSetting, darkModeSetting, pomodoroSettingsSetting, festivalCountrySetting, festivalColorSetting, showFestivalsSetting] = await Promise.all([
+          dbOps.getSetting<string>('icalUrl'),
+          dbOps.getSetting<boolean>('darkMode'),
+          dbOps.getSetting<typeof defaultPomodoroSettings>('pomodoroSettings'),
+          dbOps.getSetting<string>('festivalCountry'),
+          dbOps.getSetting<string>('festivalColor'),
+          dbOps.getSetting<boolean>('showFestivals'),
+        ]);
+        
+        // Load active task view setting
+        const activeViewSetting = await dbOps.getSetting<string>('activeTaskView');
+        if (activeViewSetting) setActiveTaskView(activeViewSetting);
+        
+        if (icalUrlSetting !== undefined) setIcalUrl(icalUrlSetting);
+        if (darkModeSetting !== undefined) {
+          setDarkMode(darkModeSetting);
+          document.documentElement.classList.toggle('dark', darkModeSetting);
+        }
+        if (pomodoroSettingsSetting !== undefined) setPomodoroSettings(pomodoroSettingsSetting);
+        if (festivalCountrySetting !== undefined) setFestivalCountry(festivalCountrySetting);
+        if (festivalColorSetting !== undefined) setFestivalColor(festivalColorSetting);
+        if (showFestivalsSetting !== undefined) setShowFestivals(showFestivalsSetting);
+        
+        // Load iCal events and festivals if cached
+        const [dbICalEvents, dbFestivals] = await Promise.all([
+          dbOps.getAllICalEvents(),
+          dbOps.getAllFestivals()
+        ]);
+        
+        if (dbICalEvents && dbICalEvents.length > 0) {
+            setIcalEvents(dbICalEvents as unknown as Event[]);
+        }
+        
+        if (dbFestivals && dbFestivals.length > 0) {
+            setFestivals(dbFestivals as unknown as Event[]);
+        }
+        
+      } catch (error) {
+        console.error('Error initializing IndexedDB:', error);
+      } finally {
+        isInitialized.current = true;
+        setIsLoading(false);
+      }
+    };
+    
+    initializeDB();
+  }, []);
+  
+  // Save state to IndexedDB whenever it changes
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    db.events.clear().then(() => db.events.bulkPut(events)).catch(e => console.error(e));
   }, [events]);
   
   useEffect(() => {
-    saveToStorage('caldy-tasks', tasks);
+    if (!isInitialized.current) return;
+    db.tasks.clear().then(() => db.tasks.bulkPut(tasks)).catch(e => console.error(e));
   }, [tasks]);
   
   useEffect(() => {
-    saveToStorage('caldy-categories', categories);
+    if (!isInitialized.current) return;
+    db.categories.clear().then(() => db.categories.bulkPut(categories)).catch(e => console.error(e));
   }, [categories]);
   
   useEffect(() => {
-    saveToStorage('caldy-tags', tags);
+    if (!isInitialized.current) return;
+    db.tags.clear().then(() => db.tags.bulkPut(tags)).catch(e => console.error(e));
   }, [tags]);
   
   useEffect(() => {
-    saveToStorage('caldy-view', view);
+    if (!isInitialized.current) return;
+    if (view) dbOps.setSetting('view', view); // View is simple setting, not table
   }, [view]);
+
+  // Note: 'view' was stored as setting but here I'm treating it as strict setting
   
   useEffect(() => {
-    saveToStorage('caldy-dark-mode', darkMode);
+    if (!isInitialized.current) return;
+    dbOps.setSetting('darkMode', darkMode);
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
-  
-  // Save iCal URL to localStorage
+
   useEffect(() => {
-    saveToStorage('caldy-ical-url', icalUrl);
+    if (!isInitialized.current) return;
+    db.taskViews.clear().then(() => db.taskViews.bulkPut(taskViews)).catch(e => console.error(e));
+  }, [taskViews]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setSetting('activeTaskView', activeTaskView);
+  }, [activeTaskView]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setSetting('pomodoroSettings', pomodoroSettings);
+  }, [pomodoroSettings]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setSetting('icalUrl', icalUrl);
   }, [icalUrl]);
   
-  // Save iCal events to localStorage
   useEffect(() => {
-    saveToStorage('caldy-ical-events', icalEvents);
+    if (!isInitialized.current) return;
+    // Cast to unknown first to avoid type mismatch if strictly typed differently
+    dbOps.setICalEvents(icalEvents as unknown as import('@/lib/db').ICalEvent[]);
   }, [icalEvents]);
   
-  // Save festival state to localStorage
   useEffect(() => {
-    saveToStorage('caldy-festivals', festivals);
+    if (!isInitialized.current) return;
+    dbOps.setFestivals(festivals as unknown as import('@/lib/db').FestivalEvent[]);
   }, [festivals]);
   
   useEffect(() => {
-    saveToStorage('caldy-show-festivals', showFestivals);
+    if (!isInitialized.current) return;
+    dbOps.setSetting('showFestivals', showFestivals);
   }, [showFestivals]);
   
   useEffect(() => {
-    saveToStorage('caldy-festival-country', festivalCountry);
+    if (!isInitialized.current) return;
+    dbOps.setSetting('festivalCountry', festivalCountry);
   }, [festivalCountry]);
   
   useEffect(() => {
-    saveToStorage('caldy-festival-color', festivalColor);
+    if (!isInitialized.current) return;
+    dbOps.setSetting('festivalColor', festivalColor);
   }, [festivalColor]);
   
   // Function to fetch and parse iCal events
@@ -860,6 +869,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshFestivals,
         isLoadingFestivals,
         availableCountries,
+        
+        // Database loading state
+        isLoading,
       }}
     >
       {children}

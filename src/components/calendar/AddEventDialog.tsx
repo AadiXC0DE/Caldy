@@ -124,40 +124,52 @@ export default function AddEventDialog({
   const occurrenceException = getOccurrenceData();
   const { start: occurrenceStart, end: occurrenceEnd } = getOccurrenceDates();
 
-  const defaultValues: FormValues = editEvent ? {
-    title: occurrenceException?.title ?? editEvent.title,
-    description: (occurrenceException?.description ?? editEvent.description) || '',
-    location: (occurrenceException?.location ?? editEvent.location) || '',
-    startDate: occurrenceStart,
-    endDate: occurrenceEnd,
-    allDay: editEvent.allDay || false,
-    categoryId: occurrenceException?.categoryId ?? editEvent.categoryId,
-    color: occurrenceException?.color ?? editEvent.color,
-    recurring: occurrenceDate ? null : (editEvent.recurring || null), // Hide recurring options when editing single occurrence
-    tags: editEvent.tags || [],
-  } : {
-    title: '',
-    description: '',
-    location: '',
-    startDate: defaultDate,
-    endDate: addHours(defaultDate, 1),
-    allDay: false,
-    categoryId: undefined,
-    color: undefined,
-    recurring: null,
-    tags: [],
-  };
-
-  useEffect(() => {
-    if (open) {
-      form.reset(defaultValues);
-    }
-  }, [open, editEvent]);
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues,
+    defaultValues: {
+      title: '',
+      description: '',
+      location: '',
+      startDate: defaultDate,
+      endDate: addHours(defaultDate, 1),
+      allDay: false,
+      categoryId: undefined,
+      color: undefined,
+      recurring: null,
+      tags: [],
+    },
   });
+
+  // Reset form when dialog opens or event changes
+  useEffect(() => {
+    if (open) {
+      const resetValues: FormValues = editEvent ? {
+        title: occurrenceException?.title ?? editEvent.title,
+        description: (occurrenceException?.description ?? editEvent.description) || '',
+        location: (occurrenceException?.location ?? editEvent.location) || '',
+        startDate: occurrenceStart,
+        endDate: occurrenceEnd,
+        allDay: editEvent.allDay || false,
+        categoryId: occurrenceException?.categoryId ?? editEvent.categoryId,
+        color: occurrenceException?.color ?? editEvent.color,
+        recurring: occurrenceDate ? null : (editEvent.recurring || null),
+        tags: editEvent.tags || [],
+      } : {
+        title: '',
+        description: '',
+        location: '',
+        startDate: defaultDate,
+        endDate: addHours(defaultDate, 1),
+        allDay: false,
+        categoryId: undefined,
+        color: undefined,
+        recurring: null,
+        tags: [],
+      };
+      form.reset(resetValues);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editEvent, occurrenceDate]);
 
   const watchAllDay = form.watch('allDay');
   const watchRecurring = form.watch('recurring');

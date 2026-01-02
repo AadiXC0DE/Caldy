@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Play, Pause, SkipForward, Settings, RotateCcw } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { Task, TimeTracking } from '@/lib/types';
+import { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { formatDistanceStrict } from 'date-fns';
+
 
 interface TaskTimeTrackingProps {
   taskId: string;
