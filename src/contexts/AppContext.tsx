@@ -8,6 +8,8 @@ interface AppContextProps {
   events: Event[];
   addEvent: (event: Omit<Event, 'id'>) => void;
   updateEvent: (id: string, event: Partial<Event>) => void;
+  updateRecurringEventInstance: (eventId: string, occurrenceDate: string, updates: Partial<Event>) => void;
+  deleteRecurringEventInstance: (eventId: string, occurrenceDate: string) => void;
   deleteEvent: (id: string) => void;
   
   // Tasks
@@ -457,6 +459,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ));
   };
   
+  const updateRecurringEventInstance = (eventId: string, occurrenceDate: string, updates: Partial<Event>) => {
+    setEvents(events.map(event => {
+      if (event.id !== eventId || !event.recurring) return event;
+      
+      const exceptions = event.recurring.exceptions || [];
+      const existingExceptionIndex = exceptions.findIndex(ex => ex.date === occurrenceDate);
+      
+      const newException = {
+        date: occurrenceDate,
+        title: updates.title,
+        description: updates.description,
+        location: updates.location,
+        start: updates.start,
+        end: updates.end,
+        color: updates.color,
+        categoryId: updates.categoryId,
+      };
+      
+      let updatedExceptions;
+      if (existingExceptionIndex >= 0) {
+        // Update existing exception
+        updatedExceptions = [...exceptions];
+        updatedExceptions[existingExceptionIndex] = {
+          ...exceptions[existingExceptionIndex],
+          ...newException,
+        };
+      } else {
+        // Add new exception
+        updatedExceptions = [...exceptions, newException];
+      }
+      
+      return {
+        ...event,
+        recurring: {
+          ...event.recurring,
+          exceptions: updatedExceptions,
+        },
+      };
+    }));
+  };
+  
+  const deleteRecurringEventInstance = (eventId: string, occurrenceDate: string) => {
+    setEvents(events.map(event => {
+      if (event.id !== eventId || !event.recurring) return event;
+      
+      const exceptions = event.recurring.exceptions || [];
+      const existingExceptionIndex = exceptions.findIndex(ex => ex.date === occurrenceDate);
+      
+      let updatedExceptions;
+      if (existingExceptionIndex >= 0) {
+        // Mark existing exception as deleted
+        updatedExceptions = [...exceptions];
+        updatedExceptions[existingExceptionIndex] = {
+          ...exceptions[existingExceptionIndex],
+          deleted: true,
+        };
+      } else {
+        // Add new exception marking this occurrence as deleted
+        updatedExceptions = [...exceptions, { date: occurrenceDate, deleted: true }];
+      }
+      
+      return {
+        ...event,
+        recurring: {
+          ...event.recurring,
+          exceptions: updatedExceptions,
+        },
+      };
+    }));
+  };
+  
   const deleteEvent = (id: string) => {
     setEvents(events.filter(event => event.id !== id));
   };
@@ -708,6 +781,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         events,
         addEvent,
         updateEvent,
+        updateRecurringEventInstance,
+        deleteRecurringEventInstance,
         deleteEvent,
         
         // Tasks

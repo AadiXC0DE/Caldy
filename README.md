@@ -1,4 +1,4 @@
-# Caldy - Calendar & Task Manager
+# Caldy: Calendar & Task Manager
 
 Caldy is a beautiful calendar and task management application built with **Next.js**. It provides a stunning interface for managing your tasks and events seamlessly.
 
