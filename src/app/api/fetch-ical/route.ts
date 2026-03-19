@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       console.error('Network error fetching iCal:', fetchError);
       return NextResponse.json(
         { error: 'Unable to connect to the calendar URL. Please check if the URL is accessible.' },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       console.error(`iCal fetch failed: ${response.status} ${response.statusText}`);
       return NextResponse.json(
         { error: `Failed to access calendar (${response.status}): ${response.statusText}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -46,16 +46,13 @@ export async function POST(request: Request) {
       icalData = await response.text();
     } catch (error) {
       console.error('Error reading iCal data:', error);
-      return NextResponse.json(
-        { error: 'Error reading calendar data' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Error reading calendar data' }, { status: 502 });
     }
 
     if (!icalData || icalData.trim().length === 0) {
       return NextResponse.json(
         { error: 'Calendar file is empty or not accessible' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -68,74 +65,77 @@ export async function POST(request: Request) {
     } catch (parseError) {
       console.error('Error parsing iCal data:', parseError);
       return NextResponse.json(
-        { error: 'Invalid calendar format. Please ensure the URL points to a valid iCal (.ics) file.' },
-        { status: 422 }
+        {
+          error:
+            'Invalid calendar format. Please ensure the URL points to a valid iCal (.ics) file.',
+        },
+        { status: 422 },
       );
     }
 
     if (!vevents || vevents.length === 0) {
-      return NextResponse.json(
-        { error: 'No events found in the calendar' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'No events found in the calendar' }, { status: 404 });
     }
 
     // Convert the ICAL events to our app's event format
-    const events = vevents.map(vevent => {
-      try {
-        const event = new ICAL.Event(vevent);
+    const events = vevents
+      .map((vevent) => {
+        try {
+          const event = new ICAL.Event(vevent);
 
-        const title = event.summary || 'Untitled Event';
-        const description = event.description || '';
-        const location = event.location || '';
+          const title = event.summary || 'Untitled Event';
+          const description = event.description || '';
+          const location = event.location || '';
 
-        let start, end;
+          let start, end;
 
-        if (event.startDate) {
-          start = event.startDate.toJSDate();
-        } else {
-          start = new Date();
+          if (event.startDate) {
+            start = event.startDate.toJSDate();
+          } else {
+            start = new Date();
+          }
+
+          if (event.endDate) {
+            end = event.endDate.toJSDate();
+          } else {
+            // Default to 1 hour if no end date
+            end = new Date(start.getTime() + 60 * 60 * 1000);
+          }
+
+          // Check if all day by looking at the time component
+          const allDay =
+            event.startDate &&
+            event.startDate.hour === 0 &&
+            event.startDate.minute === 0 &&
+            event.endDate &&
+            event.endDate.hour === 0 &&
+            event.endDate.minute === 0;
+
+          return {
+            id: `ical-${uuidv4()}`,
+            title,
+            start,
+            end,
+            allDay,
+            description,
+            location,
+            color: '#3788d8', // Default color for imported events
+            isIcalEvent: true,
+          };
+        } catch (eventError) {
+          console.warn('Error processing individual iCal event:', eventError);
+          // Skip malformed events but continue processing others
+          return null;
         }
-
-        if (event.endDate) {
-          end = event.endDate.toJSDate();
-        } else {
-          // Default to 1 hour if no end date
-          end = new Date(start.getTime() + 60 * 60 * 1000);
-        }
-
-        // Check if all day by looking at the time component
-        const allDay = event.startDate &&
-          event.startDate.hour === 0 &&
-          event.startDate.minute === 0 &&
-          event.endDate &&
-          event.endDate.hour === 0 &&
-          event.endDate.minute === 0;
-
-        return {
-          id: `ical-${uuidv4()}`,
-          title,
-          start,
-          end,
-          allDay,
-          description,
-          location,
-          color: '#3788d8', // Default color for imported events
-          isIcalEvent: true,
-        };
-      } catch (eventError) {
-        console.warn('Error processing individual iCal event:', eventError);
-        // Skip malformed events but continue processing others
-        return null;
-      }
-    }).filter(Boolean); // Remove null entries from malformed events
+      })
+      .filter(Boolean); // Remove null entries from malformed events
 
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Unexpected error processing iCal data:', error);
     return NextResponse.json(
       { error: 'An unexpected error occurred while processing the calendar' },
-      { status: 500 }
+      { status: 500 },
     );
   }
-} 
+}

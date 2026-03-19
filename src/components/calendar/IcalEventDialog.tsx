@@ -4,12 +4,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, MapPin, Clock, Calendar } from 'lucide-react';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import { Badge } from '@/components/ui/badge';
 
@@ -27,11 +22,7 @@ interface IcalEventDialogProps {
   } | null;
 }
 
-export default function IcalEventDialog({
-  open,
-  onOpenChange,
-  event,
-}: IcalEventDialogProps) {
+export default function IcalEventDialog({ open, onOpenChange, event }: IcalEventDialogProps) {
   if (!event) return null;
 
   return (
@@ -43,7 +34,10 @@ export default function IcalEventDialog({
               <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0" />
               <span className="break-all">{event.title}</span>
             </div>
-            <Badge variant="outline" className="mt-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 inline-flex">
+            <Badge
+              variant="outline"
+              className="mt-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 inline-flex"
+            >
               <span className="truncate">
                 {event.isFestival ? 'Festival/Holiday' : 'External Calendar'}
               </span>
@@ -99,12 +93,12 @@ export default function IcalEventDialog({
           )}
 
           <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-            {event.isFestival 
-              ? "This is a holiday/festival that cannot be edited." 
-              : "This event is imported from an external calendar and cannot be edited."}
+            {event.isFestival
+              ? 'This is a holiday/festival that cannot be edited.'
+              : 'This event is imported from an external calendar and cannot be edited.'}
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-} 
+}

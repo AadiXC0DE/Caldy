@@ -3,15 +3,15 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -35,13 +35,13 @@ const DAYS_OF_WEEK = [
   { value: '6', label: 'Saturday' },
 ];
 
-export function RecurringTaskSettings({ 
-  form, 
-  showRecurring, 
-  setShowRecurring 
+export function RecurringTaskSettings({
+  form,
+  showRecurring,
+  setShowRecurring,
 }: RecurringTaskSettingsProps) {
   const frequency = form.watch('recurring.frequency');
-  
+
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
@@ -52,7 +52,7 @@ export function RecurringTaskSettings({
             if (checked) {
               form.setValue('recurring', {
                 frequency: 'daily',
-                interval: 1
+                interval: 1,
               });
             } else {
               form.setValue('recurring', undefined);
@@ -67,7 +67,7 @@ export function RecurringTaskSettings({
           This is a recurring task
         </label>
       </div>
-      
+
       {showRecurring && (
         <div className="space-y-4 p-4 border rounded-md bg-muted/20">
           <div className="grid grid-cols-2 gap-4">
@@ -77,10 +77,7 @@ export function RecurringTaskSettings({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Frequency</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select frequency" />
@@ -97,7 +94,7 @@ export function RecurringTaskSettings({
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="recurring.interval"
@@ -126,7 +123,7 @@ export function RecurringTaskSettings({
               )}
             />
           </div>
-          
+
           {frequency === 'weekly' && (
             <FormField
               control={form.control}
@@ -146,14 +143,11 @@ export function RecurringTaskSettings({
                             if (checked) {
                               field.onChange([...currentValues, dayValue].sort());
                             } else {
-                              field.onChange(currentValues.filter(v => v !== dayValue));
+                              field.onChange(currentValues.filter((v) => v !== dayValue));
                             }
                           }}
                         />
-                        <label
-                          htmlFor={`day-${day.value}`}
-                          className="text-sm"
-                        >
+                        <label htmlFor={`day-${day.value}`} className="text-sm">
                           {day.label.substring(0, 3)}
                         </label>
                       </div>
@@ -164,7 +158,7 @@ export function RecurringTaskSettings({
               )}
             />
           )}
-          
+
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -178,15 +172,11 @@ export function RecurringTaskSettings({
                         <Button
                           variant="outline"
                           className={`pl-3 text-left font-normal ${
-                            !field.value && "text-muted-foreground"
+                            !field.value && 'text-muted-foreground'
                           }`}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>No end date</span>
-                          )}
+                          {field.value ? format(field.value, 'PPP') : <span>No end date</span>}
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
@@ -203,7 +193,7 @@ export function RecurringTaskSettings({
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="recurring.occurrences"
@@ -231,4 +221,4 @@ export function RecurringTaskSettings({
       )}
     </div>
   );
-} 
+}

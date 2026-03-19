@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, ListChecks } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { Task, RecurringPattern } from '@/lib/types';
+import { Task, RecurringPattern, Subtask } from '@/lib/types';
 import { toast } from 'sonner';
 import { RecurringTaskSettings } from './RecurringTaskSettings';
 
@@ -33,7 +34,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -48,13 +55,16 @@ const formSchema = z.object({
   categoryId: z.string().optional(),
   progress: z.number().min(0).max(100).optional(),
   tags: z.array(z.string()).default([]),
-  recurring: z.object({
-    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
-    interval: z.number().min(1).default(1),
-    endDate: z.date().optional().nullable(),
-    occurrences: z.number().optional().nullable(),
-    daysOfWeek: z.array(z.number()).optional(),
-  }).optional().nullable(),
+  recurring: z
+    .object({
+      frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+      interval: z.number().min(1).default(1),
+      endDate: z.date().optional().nullable(),
+      occurrences: z.number().optional().nullable(),
+      daysOfWeek: z.array(z.number()).optional(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type FormValues = z.infer<typeof formSchema>;
@@ -65,15 +75,13 @@ interface TaskDetailDialogProps {
   task: Task | null;
 }
 
-export default function TaskDetailDialog({
-  open,
-  onOpenChange,
-  task,
-}: TaskDetailDialogProps) {
+export default function TaskDetailDialog({ open, onOpenChange, task }: TaskDetailDialogProps) {
   const { updateTask, addTask, categories, tags } = useApp();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showProgress, setShowProgress] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [newSubtask, setNewSubtask] = useState('');
 
   const defaultValues: FormValues = {
     title: '',
@@ -111,11 +119,13 @@ export default function TaskDetailDialog({
       setSelectedTags(task.tags || []);
       setShowProgress(task.progress !== undefined);
       setShowRecurring(!!task.recurring);
+      setSubtasks(task.subtasks || []);
     } else if (open && !task) {
       form.reset(defaultValues);
       setSelectedTags([]);
       setShowProgress(false);
       setShowRecurring(false);
+      setSubtasks([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task, form]);
@@ -130,12 +140,14 @@ export default function TaskDetailDialog({
       priority: data.priority,
       categoryId: data.categoryId === 'none' ? undefined : data.categoryId,
       tags: selectedTags,
-      recurring: showRecurring ? data.recurring as RecurringPattern : undefined,
+      recurring: showRecurring ? (data.recurring as RecurringPattern) : undefined,
     };
 
     if (showProgress) {
       taskData.progress = data.progress;
     }
+
+    taskData.subtasks = subtasks;
 
     if (task) {
       updateTask(task.id, taskData);
@@ -151,20 +163,24 @@ export default function TaskDetailDialog({
   };
 
   const toggleTag = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId)
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
   };
+
+  const calendarLink = task
+    ? `/calendar?new=event&source=task&title=${encodeURIComponent(task.title)}${
+        task.description ? `&description=${encodeURIComponent(task.description)}` : ''
+      }&date=${encodeURIComponent(
+        task.dueDate ? new Date(task.dueDate).toISOString() : new Date().toISOString(),
+      )}`
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">
-            {task ? 'Edit Task' : 'Add New Task'}
-          </DialogTitle>
+          <DialogTitle className="text-xl">{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -268,7 +284,7 @@ export default function TaskDetailDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">No Category</SelectItem>
-                      {categories.map(category => (
+                      {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -344,35 +360,107 @@ export default function TaskDetailDialog({
               </div>
             </div>
 
+            {/* Subtasks */}
+            <div className="space-y-2">
+              <FormLabel className="flex items-center">
+                <ListChecks className="w-4 h-4 mr-1" />
+                Subtasks
+              </FormLabel>
+              <div className="space-y-1">
+                {subtasks.map((st) => (
+                  <div key={st.id} className="flex items-center gap-2 group">
+                    <Checkbox
+                      checked={st.completed}
+                      onCheckedChange={(checked) => {
+                        setSubtasks((prev) =>
+                          prev.map((s) => (s.id === st.id ? { ...s, completed: !!checked } : s)),
+                        );
+                      }}
+                    />
+                    <span
+                      className={`text-sm flex-1 ${st.completed ? 'line-through text-muted-foreground' : ''}`}
+                    >
+                      {st.title}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setSubtasks((prev) => prev.filter((s) => s.id !== st.id))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  placeholder="Add subtask..."
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newSubtask.trim()) {
+                      e.preventDefault();
+                      setSubtasks((prev) => [
+                        ...prev,
+                        { id: crypto.randomUUID(), title: newSubtask.trim(), completed: false },
+                      ]);
+                      setNewSubtask('');
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  disabled={!newSubtask.trim()}
+                  onClick={() => {
+                    if (newSubtask.trim()) {
+                      setSubtasks((prev) => [
+                        ...prev,
+                        { id: crypto.randomUUID(), title: newSubtask.trim(), completed: false },
+                      ]);
+                      setNewSubtask('');
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="completed"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-2">
                   <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Mark as completed
-                    </FormLabel>
+                    <FormLabel>Mark as completed</FormLabel>
                   </div>
                 </FormItem>
               )}
             />
 
-
             <DialogFooter>
-              <Button type="submit">
-                {task ? 'Save Changes' : 'Create Task'}
-              </Button>
+              {task && calendarLink && (
+                <Button asChild variant="outline">
+                  <Link href={calendarLink}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Block on Calendar
+                  </Link>
+                </Button>
+              )}
+              <Button type="submit">{task ? 'Save Changes' : 'Create Task'}</Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
-} 
+}

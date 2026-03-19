@@ -5,6 +5,9 @@ import { Navbar } from './Navbar';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
+import { Confetti } from '@/components/common/Confetti';
+import { FloatingActionButton } from '@/components/common/FloatingActionButton';
+import { KeyboardShortcuts } from '@/components/common/KeyboardShortcuts';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -26,7 +29,10 @@ export function AppLayout({ children }: AppLayoutProps) {
           </motion.div>
         </main>
         <Toaster />
+        <Confetti />
+        <FloatingActionButton />
+        <KeyboardShortcuts />
       </div>
     </AppProvider>
   );
-} 
+}

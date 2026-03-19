@@ -36,16 +36,10 @@ export function RecurringEditDialog({
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onEditThis}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <AlertDialogAction onClick={onEditThis} className="bg-blue-600 hover:bg-blue-700">
             This Event Only
           </AlertDialogAction>
-          <AlertDialogAction
-            onClick={onEditAll}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
+          <AlertDialogAction onClick={onEditAll} className="bg-indigo-600 hover:bg-indigo-700">
             All Events
           </AlertDialogAction>
         </AlertDialogFooter>

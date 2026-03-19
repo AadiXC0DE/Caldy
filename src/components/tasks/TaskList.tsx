@@ -1,19 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/contexts/AppContext';
 import { Task, Priority } from '@/lib/types';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import {
-  CheckCircle,
-  ChevronDown,
-  Calendar,
-  Edit,
-  Trash2,
-  Tag
-} from 'lucide-react';
+import { CheckCircle, ChevronDown, Calendar, Edit, Trash2, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +29,9 @@ const getPriorityColor = (priority: Priority) => {
   }
 };
 
-const getPriorityBadgeVariant = (priority: Priority): "default" | "destructive" | "outline" | "secondary" => {
+const getPriorityBadgeVariant = (
+  priority: Priority,
+): 'default' | 'destructive' | 'outline' | 'secondary' => {
   switch (priority) {
     case 'high':
       return 'destructive';
@@ -88,24 +84,27 @@ function TaskListClient({ tasks }: TaskListProps) {
   });
 
   const toggleExpanded = (taskId: string) => {
-    setExpandedTasks(prev => ({
+    setExpandedTasks((prev) => ({
       ...prev,
-      [taskId]: !prev[taskId]
+      [taskId]: !prev[taskId],
     }));
   };
 
   const handleCompleteTask = (taskId: string, isComplete: boolean) => {
     setCompletingTaskId(taskId);
-    
+
     // Delay the actual completion to allow the animation to play
-    setTimeout(() => {
-      completeTask(taskId, isComplete);
-      toast.success(isComplete ? 'Task completed!' : 'Task marked as incomplete');
-      // Clear the completing state after animation completes
-      setTimeout(() => {
-        setCompletingTaskId(null);
-      }, 500);
-    }, isComplete ? 400 : 0); // Only delay when completing, not when un-completing
+    setTimeout(
+      () => {
+        completeTask(taskId, isComplete);
+        toast.success(isComplete ? 'Task completed!' : 'Task marked as incomplete');
+        // Clear the completing state after animation completes
+        setTimeout(() => {
+          setCompletingTaskId(null);
+        }, 500);
+      },
+      isComplete ? 400 : 0,
+    ); // Only delay when completing, not when un-completing
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -120,7 +119,7 @@ function TaskListClient({ tasks }: TaskListProps) {
 
   const getCategoryColor = (categoryId?: string) => {
     if (!categoryId) return undefined;
-    const category = categories.find(c => c.id === categoryId);
+    const category = categories.find((c) => c.id === categoryId);
     return category?.color;
   };
 
@@ -168,7 +167,6 @@ function TaskListClient({ tasks }: TaskListProps) {
       <motion.div layout className="space-y-3">
         <AnimatePresence initial={false} mode="popLayout">
           {sortedTasks.map((task) => {
-
             return (
               <motion.div
                 key={task.id}
@@ -176,17 +174,17 @@ function TaskListClient({ tasks }: TaskListProps) {
                 animate={{
                   opacity: 1,
                   y: 0,
-                  transition: { duration: 0.2 }
+                  transition: { duration: 0.2 },
                 }}
                 exit={{
                   opacity: 0,
                   scale: 0.98,
-                  transition: { duration: 0.15 }
+                  transition: { duration: 0.15 },
                 }}
                 layout
                 className={`border rounded-lg p-4 bg-card hover:shadow-md transition-all duration-200 ${task.completed ? 'opacity-75' : ''} group`}
                 transition={{
-                  layout: { duration: 0.3, type: "spring", bounce: 0.2 }
+                  layout: { duration: 0.3, type: 'spring', bounce: 0.2 },
                 }}
               >
                 <Collapsible
@@ -216,23 +214,24 @@ function TaskListClient({ tasks }: TaskListProps) {
                         <div className="flex-grow min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="text-lg font-semibold relative overflow-hidden">
-                              <span className={`inline-block relative ${task.completed ? 'text-muted-foreground line-through' : ''}`}>
+                              <span
+                                className={`inline-block relative ${task.completed ? 'text-muted-foreground line-through' : ''}`}
+                              >
                                 {task.title}
 
                                 {(task.completed || completingTaskId === task.id) && (
                                   <motion.span
                                     className="absolute left-0 top-1/2 h-[2px] bg-muted-foreground"
-                                    initial={{ width: "0%" }}
-                                    animate={{ width: "100%" }}
+                                    initial={{ width: '0%' }}
+                                    animate={{ width: '100%' }}
                                     transition={{
                                       duration: task.completed ? 0 : 0.3,
-                                      ease: "easeInOut"
+                                      ease: 'easeInOut',
                                     }}
                                   />
                                 )}
                               </span>
                             </h3>
-
                           </div>
 
                           <div className="flex flex-wrap items-center gap-3">
@@ -243,7 +242,10 @@ function TaskListClient({ tasks }: TaskListProps) {
                                 : 'No due date'}
                             </div>
 
-                            <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs">
+                            <Badge
+                              variant={getPriorityBadgeVariant(task.priority)}
+                              className="text-xs"
+                            >
                               {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                             </Badge>
 
@@ -252,12 +254,37 @@ function TaskListClient({ tasks }: TaskListProps) {
                                 className="text-xs px-2.5 py-1 rounded-full font-medium"
                                 style={{
                                   backgroundColor: `${getCategoryColor(task.categoryId)}15`,
-                                  color: getCategoryColor(task.categoryId)
+                                  color: getCategoryColor(task.categoryId),
                                 }}
                               >
-                                {categories.find(c => c.id === task.categoryId)?.name}
+                                {categories.find((c) => c.id === task.categoryId)?.name}
                               </div>
                             )}
+
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-full px-3 text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link
+                                href={`/calendar?new=event&source=task&title=${encodeURIComponent(
+                                  task.title,
+                                )}${
+                                  task.description
+                                    ? `&description=${encodeURIComponent(task.description)}`
+                                    : ''
+                                }&date=${encodeURIComponent(
+                                  task.dueDate
+                                    ? new Date(task.dueDate).toISOString()
+                                    : new Date().toISOString(),
+                                )}`}
+                              >
+                                <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                                Schedule
+                              </Link>
+                            </Button>
                           </div>
                         </div>
 
@@ -265,7 +292,7 @@ function TaskListClient({ tasks }: TaskListProps) {
                           <motion.div
                             whileHover={{ scale: 1.1 }}
                             animate={{ rotate: expandedTasks[task.id] ? 180 : 0 }}
-                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
                           >
                             <ChevronDown className="h-5 w-5 text-muted-foreground" />
                           </motion.div>
@@ -273,26 +300,26 @@ function TaskListClient({ tasks }: TaskListProps) {
                       </div>
                     </div>
                   </div>
-                  
+
                   <AnimatePresence>
                     {expandedTasks[task.id] && (
-                      <motion.div 
+                      <motion.div
                         initial={{ height: 0, opacity: 0 }}
-                        animate={{ 
-                          height: 'auto', 
+                        animate={{
+                          height: 'auto',
                           opacity: 1,
-                          transition: { 
-                            height: { duration: 0.3, ease: "easeOut" },
-                            opacity: { duration: 0.2, delay: 0.1 }
-                          }
+                          transition: {
+                            height: { duration: 0.3, ease: 'easeOut' },
+                            opacity: { duration: 0.2, delay: 0.1 },
+                          },
                         }}
-                        exit={{ 
-                          height: 0, 
+                        exit={{
+                          height: 0,
                           opacity: 0,
-                          transition: { 
-                            height: { duration: 0.2, ease: "easeInOut" },
-                            opacity: { duration: 0.1 }
-                          }
+                          transition: {
+                            height: { duration: 0.2, ease: 'easeInOut' },
+                            opacity: { duration: 0.1 },
+                          },
                         }}
                         className="overflow-hidden"
                         layout
@@ -306,7 +333,6 @@ function TaskListClient({ tasks }: TaskListProps) {
                             </div>
                           )}
 
-                          
                           {task.progress !== undefined && (
                             <div className="space-y-1 mt-3">
                               <div className="flex justify-between text-xs">
@@ -316,11 +342,11 @@ function TaskListClient({ tasks }: TaskListProps) {
                               <Progress value={task.progress} className="h-2" />
                             </div>
                           )}
-                          
+
                           {task.tags && task.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-3">
-                              {task.tags.map(tagId => {
-                                const tag = tags.find(t => t.id === tagId);
+                              {task.tags.map((tagId) => {
+                                const tag = tags.find((t) => t.id === tagId);
                                 return tag ? (
                                   <Badge key={tagId} variant="outline" className="text-xs">
                                     <Tag className="h-3 w-3 mr-1" />
@@ -330,7 +356,7 @@ function TaskListClient({ tasks }: TaskListProps) {
                               })}
                             </div>
                           )}
-                          
+
                           {/* Action buttons */}
                           <div className="mt-4 pt-3 border-t border-border/50">
                             <div className="flex items-center justify-end gap-2">
@@ -365,12 +391,8 @@ function TaskListClient({ tasks }: TaskListProps) {
           })}
         </AnimatePresence>
       </motion.div>
-      
-      <TaskDetailDialog 
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-        task={selectedTask}
-      />
+
+      <TaskDetailDialog open={isDetailOpen} onOpenChange={setIsDetailOpen} task={selectedTask} />
     </LayoutGroup>
   );
 }
@@ -381,4 +403,4 @@ export default function TaskList(props: TaskListProps) {
       <TaskListClient {...props} />
     </Suspense>
   );
-} 
+}

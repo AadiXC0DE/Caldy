@@ -70,6 +70,12 @@ export type TimeTracking = {
   }[];
 };
 
+export type Subtask = {
+  id: string;
+  title: string;
+  completed: boolean;
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -86,6 +92,7 @@ export type Task = {
   timeTracking?: TimeTracking;
   isTemplate?: boolean;
   dependsOn?: string[];
+  subtasks?: Subtask[];
 };
 
 export type TaskView = {
@@ -106,4 +113,36 @@ export type TaskView = {
   sortDirection: 'asc' | 'desc';
 };
 
-export type CalendarView = 'month' | 'week' | 'day' | 'list'; 
+export type CalendarView = 'month' | 'week' | 'day' | 'list';
+
+// Habit Tracker types
+export type Habit = {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  frequency: 'daily' | 'weekly';
+  completedDates: string[]; // ISO date strings (YYYY-MM-DD)
+  createdAt: Date;
+};
+
+// Notes types
+export type Note = {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  pinned: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  folder?: string;
+  tags?: string[];
+  isTemplate?: boolean;
+  isDailyNote?: boolean;
+  dailyNoteDate?: string;
+  linkedNoteTitles?: string[];
+  linkedTaskIds?: string[];
+  linkedEventIds?: string[];
+  linkedTaskId?: string;
+  linkedEventId?: string;
+};

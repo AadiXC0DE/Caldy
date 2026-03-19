@@ -1,7 +1,7 @@
 'use client';
 
 import Dexie, { type Table } from 'dexie';
-import type { Event, Task, Category, Tag, TaskView } from './types';
+import type { Event, Task, Category, Tag, TaskView, Habit, Note } from './types';
 
 // Settings type for key-value storage
 interface Settings {
@@ -43,10 +43,12 @@ class CaldyDatabase extends Dexie {
   settings!: Table<Settings, string>;
   icalEvents!: Table<ICalEvent, string>;
   festivals!: Table<FestivalEvent, string>;
+  habits!: Table<Habit, string>;
+  notes!: Table<Note, string>;
 
   constructor() {
     super('CaldyDB');
-    
+
     // Define database schema
     this.version(1).stores({
       events: 'id, start, end, categoryId',
@@ -56,7 +58,36 @@ class CaldyDatabase extends Dexie {
       taskViews: 'id',
       settings: 'key',
       icalEvents: 'id',
-      festivals: 'id'
+      festivals: 'id',
+    });
+
+    // Version 2: Add habits and notes tables
+    this.version(2).stores({
+      events: 'id, start, end, categoryId',
+      tasks: 'id, dueDate, completed, priority, categoryId',
+      categories: 'id',
+      tags: 'id',
+      taskViews: 'id',
+      settings: 'key',
+      icalEvents: 'id',
+      festivals: 'id',
+      habits: 'id, createdAt',
+      notes: 'id, pinned, createdAt, updatedAt',
+    });
+
+    // Version 3: Expand notes for folders, templates, and daily notes
+    this.version(3).stores({
+      events: 'id, start, end, categoryId',
+      tasks: 'id, dueDate, completed, priority, categoryId',
+      categories: 'id',
+      tags: 'id',
+      taskViews: 'id',
+      settings: 'key',
+      icalEvents: 'id',
+      festivals: 'id',
+      habits: 'id, createdAt',
+      notes:
+        'id, pinned, createdAt, updatedAt, folder, isTemplate, isDailyNote, dailyNoteDate, *tags',
     });
   }
 }
@@ -204,6 +235,138 @@ export async function setFestivals(festivals: FestivalEvent[]): Promise<void> {
 }
 
 // ============================================
+// CRUD operations for Habits
+// ============================================
+export async function getAllHabits(): Promise<Habit[]> {
+  return await db.habits.toArray();
+}
+
+export async function addHabit(habit: Habit): Promise<string> {
+  return await db.habits.add(habit);
+}
+
+export async function updateHabit(id: string, updates: Partial<Habit>): Promise<number> {
+  return await db.habits.update(id, updates);
+}
+
+export async function deleteHabit(id: string): Promise<void> {
+  await db.habits.delete(id);
+}
+
+// ============================================
+// CRUD operations for Notes
+// ============================================
+export async function getAllNotes(): Promise<Note[]> {
+  return await db.notes.toArray();
+}
+
+export async function addNote(note: Note): Promise<string> {
+  return await db.notes.add(note);
+}
+
+export async function updateNote(id: string, updates: Partial<Note>): Promise<number> {
+  return await db.notes.update(id, updates);
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await db.notes.delete(id);
+}
+
+// ============================================
+// Data Export & Import
+// ============================================
+export async function exportAllData(): Promise<Record<string, unknown>> {
+  const [
+    events,
+    tasks,
+    categories,
+    tags,
+    taskViews,
+    settings,
+    habits,
+    notes,
+    icalEvents,
+    festivals,
+  ] = await Promise.all([
+    db.events.toArray(),
+    db.tasks.toArray(),
+    db.categories.toArray(),
+    db.tags.toArray(),
+    db.taskViews.toArray(),
+    db.settings.toArray(),
+    db.habits.toArray(),
+    db.notes.toArray(),
+    db.icalEvents.toArray(),
+    db.festivals.toArray(),
+  ]);
+
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    data: {
+      events,
+      tasks,
+      categories,
+      tags,
+      taskViews,
+      settings,
+      habits,
+      notes,
+      icalEvents,
+      festivals,
+    },
+  };
+}
+
+export async function importAllData(importData: Record<string, unknown>): Promise<void> {
+  const data = importData.data as Record<string, unknown[]>;
+  if (!data) throw new Error('Invalid import data format');
+
+  await db.transaction(
+    'rw',
+    [
+      db.events,
+      db.tasks,
+      db.categories,
+      db.tags,
+      db.taskViews,
+      db.settings,
+      db.habits,
+      db.notes,
+      db.icalEvents,
+      db.festivals,
+    ],
+    async () => {
+      // Clear all tables
+      await Promise.all([
+        db.events.clear(),
+        db.tasks.clear(),
+        db.categories.clear(),
+        db.tags.clear(),
+        db.taskViews.clear(),
+        db.settings.clear(),
+        db.habits.clear(),
+        db.notes.clear(),
+        db.icalEvents.clear(),
+        db.festivals.clear(),
+      ]);
+
+      // Import data into each table
+      if (data.events?.length) await db.events.bulkPut(data.events as Event[]);
+      if (data.tasks?.length) await db.tasks.bulkPut(data.tasks as Task[]);
+      if (data.categories?.length) await db.categories.bulkPut(data.categories as Category[]);
+      if (data.tags?.length) await db.tags.bulkPut(data.tags as Tag[]);
+      if (data.taskViews?.length) await db.taskViews.bulkPut(data.taskViews as TaskView[]);
+      if (data.settings?.length) await db.settings.bulkPut(data.settings as Settings[]);
+      if (data.habits?.length) await db.habits.bulkPut(data.habits as Habit[]);
+      if (data.notes?.length) await db.notes.bulkPut(data.notes as Note[]);
+      if (data.icalEvents?.length) await db.icalEvents.bulkPut(data.icalEvents as ICalEvent[]);
+      if (data.festivals?.length) await db.festivals.bulkPut(data.festivals as FestivalEvent[]);
+    },
+  );
+}
+
+// ============================================
 // Migration from localStorage
 // ============================================
 const STORAGE_KEYS = {
@@ -225,11 +388,11 @@ const STORAGE_KEYS = {
 // Helper to parse dates from JSON
 function parseDates<T>(data: T): T {
   if (typeof data !== 'object' || data === null) return data;
-  
+
   if (Array.isArray(data)) {
     return data.map(parseDates) as T;
   }
-  
+
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(value)) {
@@ -246,7 +409,7 @@ function parseDates<T>(data: T): T {
 // Helper to load from localStorage
 function loadFromLocalStorage<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const stored = localStorage.getItem(key);
     if (!stored) return null;
@@ -262,9 +425,9 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
   if (migrated) {
     return false; // Already migrated
   }
-  
+
   console.log('Starting migration from localStorage to IndexedDB...');
-  
+
   try {
     // Migrate events
     const events = loadFromLocalStorage<Event[]>(STORAGE_KEYS.events);
@@ -272,49 +435,49 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
       await db.events.bulkPut(events);
       console.log(`Migrated ${events.length} events`);
     }
-    
+
     // Migrate tasks
     const tasks = loadFromLocalStorage<Task[]>(STORAGE_KEYS.tasks);
     if (tasks && tasks.length > 0) {
       await db.tasks.bulkPut(tasks);
       console.log(`Migrated ${tasks.length} tasks`);
     }
-    
+
     // Migrate categories
     const categories = loadFromLocalStorage<Category[]>(STORAGE_KEYS.categories);
     if (categories && categories.length > 0) {
       await db.categories.bulkPut(categories);
       console.log(`Migrated ${categories.length} categories`);
     }
-    
+
     // Migrate tags
     const tags = loadFromLocalStorage<Tag[]>(STORAGE_KEYS.tags);
     if (tags && tags.length > 0) {
       await db.tags.bulkPut(tags);
       console.log(`Migrated ${tags.length} tags`);
     }
-    
+
     // Migrate task views
     const taskViews = loadFromLocalStorage<TaskView[]>(STORAGE_KEYS.taskViews);
     if (taskViews && taskViews.length > 0) {
       await db.taskViews.bulkPut(taskViews);
       console.log(`Migrated ${taskViews.length} task views`);
     }
-    
+
     // Migrate iCal events
     const icalEvents = loadFromLocalStorage<ICalEvent[]>(STORAGE_KEYS.icalEvents);
     if (icalEvents && icalEvents.length > 0) {
       await db.icalEvents.bulkPut(icalEvents);
       console.log(`Migrated ${icalEvents.length} iCal events`);
     }
-    
+
     // Migrate festivals
     const festivals = loadFromLocalStorage<FestivalEvent[]>(STORAGE_KEYS.festivals);
     if (festivals && festivals.length > 0) {
       await db.festivals.bulkPut(festivals);
       console.log(`Migrated ${festivals.length} festivals`);
     }
-    
+
     // Migrate settings
     const settings = [
       { key: 'icalUrl', storageKey: STORAGE_KEYS.icalUrl },
@@ -324,7 +487,7 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
       { key: 'festivalColor', storageKey: STORAGE_KEYS.festivalColor },
       { key: 'showFestivals', storageKey: STORAGE_KEYS.showFestivals },
     ];
-    
+
     for (const { key, storageKey } of settings) {
       const value = loadFromLocalStorage<unknown>(storageKey);
       if (value !== null) {
@@ -332,15 +495,15 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
         console.log(`Migrated setting: ${key}`);
       }
     }
-    
+
     // Mark as migrated
     await setSetting('migrated_from_localstorage', true);
-    
+
     // Clear localStorage after successful migration
-    Object.values(STORAGE_KEYS).forEach(key => {
+    Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
-    
+
     console.log('Migration completed successfully!');
     return true;
   } catch (error) {
@@ -350,4 +513,4 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
 }
 
 // Export type for use in other files
-export type { FestivalEvent, ICalEvent };
+export type { FestivalEvent, ICalEvent, Settings };

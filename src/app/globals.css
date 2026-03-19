@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -78,7 +78,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0.08 250); /* Match ring */
   --fc-page-bg-color: white;
-  --fc-list-event-hover-bg-color: oklch(0.6 0.14 250 / 0.5);  ;
+  --fc-list-event-hover-bg-color: oklch(0.6 0.14 250 / 0.5);
 }
 
 .dark {
@@ -115,7 +115,7 @@
   --sidebar-ring: oklch(0.65 0.1 250); /* Match ring */
   --fc-border-color: oklch(1 0 0 / 15%);
   --fc-page-bg-color: black;
-  --fc-list-event-hover-bg-color: rgba(128, 128, 128, 0.555) ;
+  --fc-list-event-hover-bg-color: rgba(128, 128, 128, 0.555);
 }
 
 @layer base {
@@ -137,7 +137,8 @@
   border-color: var(--border);
 }
 
-.dark .fc th, .dark .fc td {
+.dark .fc th,
+.dark .fc td {
   border-color: var(--border);
 }
 
@@ -205,11 +206,11 @@
     font-size: 0.75rem !important;
     padding: 0 2px !important;
   }
-  
+
   .fc-daygrid-day-bottom {
     margin-top: 0px !important;
   }
-  
+
   .fc .fc-daygrid-day-bottom {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
@@ -280,7 +281,7 @@
 
 /* Add a small indicator in the title for list view */
 .fc-list-event.ical-event .fc-list-event-title::before {
-  content: "📅 ";
+  content: '📅 ';
   font-size: 0.9em;
   opacity: 0.8;
 }
@@ -293,12 +294,12 @@
     transform: translateX(-50%) !important; /* Center adjustment */
     right: auto !important; /* Override any right positioning */
   }
-  
+
   .fc-popover-body {
     max-height: 60vh !important; /* Limit height */
     overflow-y: auto !important; /* Enable scrolling if needed */
   }
-  
+
   /* Ensure event titles don't overflow */
   .fc-popover .fc-event-title {
     overflow: hidden !important;
@@ -306,7 +307,7 @@
     white-space: nowrap !important;
     max-width: 85vw !important;
   }
-  .fc-event-time{
+  .fc-event-time {
     display: none !important;
   }
 }
@@ -328,7 +329,7 @@
 }
 
 .fc-list-event.festival-event {
-  border-left: 3px solid #FF5722 !important;
+  border-left: 3px solid #ff5722 !important;
 }
 
 .fc-list-event.festival-event::before {
@@ -336,7 +337,7 @@
 }
 
 .fc-list-event.festival-event .fc-list-event-title::before {
-  content: "🎉 ";
+  content: '🎉 ';
   font-size: 0.9em;
 }
 
@@ -376,22 +377,24 @@
 }
 
 /* Dropdown menu item hover state customization */
-[data-slot="dropdown-menu-item"]:focus {
+[data-slot='dropdown-menu-item']:focus {
   background-color: var(--primary) !important;
   color: var(--primary-foreground) !important;
 }
 
-.dark [data-slot="dropdown-menu-item"]:focus {
+.dark [data-slot='dropdown-menu-item']:focus {
   background-color: var(--primary) !important;
   color: var(--primary-foreground) !important;
 }
 
 /* Task view dropdown specific styles */
-.task-view-dropdown [data-slot="dropdown-menu-item"] {
-  transition: background-color 0.2s, color 0.2s;
+.task-view-dropdown [data-slot='dropdown-menu-item'] {
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
-.task-view-dropdown [data-slot="dropdown-menu-item"]:hover {
+.task-view-dropdown [data-slot='dropdown-menu-item']:hover {
   background-color: var(--primary) !important;
   color: var(--primary-foreground) !important;
 }

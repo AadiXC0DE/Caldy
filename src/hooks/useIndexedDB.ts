@@ -12,7 +12,7 @@ export function useIndexedDBState<T>(
   dbGetter: () => Promise<T[]>,
   dbSetter: (items: T[]) => Promise<void>,
   localStorageKey: string,
-  defaultValue: T[]
+  defaultValue: T[],
 ): [T[], React.Dispatch<React.SetStateAction<T[]>>, boolean] {
   const [data, setData] = useState<T[]>(defaultValue);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +39,7 @@ export function useIndexedDBState<T>(
   // Save data to IndexedDB whenever it changes
   useEffect(() => {
     if (isInitializing.current) return;
-    
+
     const saveData = async () => {
       try {
         await dbSetter(data);
@@ -58,7 +58,7 @@ export function useIndexedDBState<T>(
 // ============================================
 export function useIndexedDBSetting<T>(
   key: string,
-  defaultValue: T
+  defaultValue: T,
 ): [T, (value: T) => void, boolean] {
   const [value, setValue] = useState<T>(defaultValue);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +85,7 @@ export function useIndexedDBSetting<T>(
   // Save to IndexedDB whenever value changes
   useEffect(() => {
     if (isInitializing.current) return;
-    
+
     const saveSetting = async () => {
       try {
         await db.setSetting(key, value);
@@ -130,57 +130,69 @@ export function useIndexedDBInitializer(): boolean {
 // ============================================
 // Specific state hooks for each data type
 // ============================================
-export function useEventsDB(defaultValue: Event[]): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
+export function useEventsDB(
+  defaultValue: Event[],
+): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
   const getEvents = useCallback(async () => db.getAllEvents(), []);
   const setEvents = useCallback(async (events: Event[]) => {
     await db.db.events.clear();
     await db.db.events.bulkPut(events);
   }, []);
-  
+
   return useIndexedDBState(getEvents, setEvents, 'events', defaultValue);
 }
 
-export function useTasksDB(defaultValue: Task[]): [Task[], React.Dispatch<React.SetStateAction<Task[]>>, boolean] {
+export function useTasksDB(
+  defaultValue: Task[],
+): [Task[], React.Dispatch<React.SetStateAction<Task[]>>, boolean] {
   const getTasks = useCallback(async () => db.getAllTasks(), []);
   const setTasks = useCallback(async (tasks: Task[]) => {
     await db.db.tasks.clear();
     await db.db.tasks.bulkPut(tasks);
   }, []);
-  
+
   return useIndexedDBState(getTasks, setTasks, 'tasks', defaultValue);
 }
 
-export function useCategoriesDB(defaultValue: Category[]): [Category[], React.Dispatch<React.SetStateAction<Category[]>>, boolean] {
+export function useCategoriesDB(
+  defaultValue: Category[],
+): [Category[], React.Dispatch<React.SetStateAction<Category[]>>, boolean] {
   const getCategories = useCallback(async () => db.getAllCategories(), []);
   const setCategories = useCallback(async (categories: Category[]) => {
     await db.db.categories.clear();
     await db.db.categories.bulkPut(categories);
   }, []);
-  
+
   return useIndexedDBState(getCategories, setCategories, 'categories', defaultValue);
 }
 
-export function useTagsDB(defaultValue: Tag[]): [Tag[], React.Dispatch<React.SetStateAction<Tag[]>>, boolean] {
+export function useTagsDB(
+  defaultValue: Tag[],
+): [Tag[], React.Dispatch<React.SetStateAction<Tag[]>>, boolean] {
   const getTags = useCallback(async () => db.getAllTags(), []);
   const setTags = useCallback(async (tags: Tag[]) => {
     await db.db.tags.clear();
     await db.db.tags.bulkPut(tags);
   }, []);
-  
+
   return useIndexedDBState(getTags, setTags, 'tags', defaultValue);
 }
 
-export function useTaskViewsDB(defaultValue: TaskView[]): [TaskView[], React.Dispatch<React.SetStateAction<TaskView[]>>, boolean] {
+export function useTaskViewsDB(
+  defaultValue: TaskView[],
+): [TaskView[], React.Dispatch<React.SetStateAction<TaskView[]>>, boolean] {
   const getTaskViews = useCallback(async () => db.getAllTaskViews(), []);
   const setTaskViews = useCallback(async (views: TaskView[]) => {
     await db.db.taskViews.clear();
     await db.db.taskViews.bulkPut(views);
   }, []);
-  
+
   return useIndexedDBState(getTaskViews, setTaskViews, 'taskViews', defaultValue);
 }
 
-export function useICalEventsDB(defaultValue: Event[]): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
+export function useICalEventsDB(
+  defaultValue: Event[],
+): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
   const getICalEvents = useCallback(async () => {
     const events = await db.getAllICalEvents();
     return events as unknown as Event[];
@@ -188,11 +200,13 @@ export function useICalEventsDB(defaultValue: Event[]): [Event[], React.Dispatch
   const setICalEvents = useCallback(async (events: Event[]) => {
     await db.setICalEvents(events as unknown as ICalEvent[]);
   }, []);
-  
+
   return useIndexedDBState(getICalEvents, setICalEvents, 'icalEvents', defaultValue);
 }
 
-export function useFestivalsDB(defaultValue: Event[]): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
+export function useFestivalsDB(
+  defaultValue: Event[],
+): [Event[], React.Dispatch<React.SetStateAction<Event[]>>, boolean] {
   const getFestivals = useCallback(async () => {
     const festivals = await db.getAllFestivals();
     return festivals as unknown as Event[];
@@ -200,6 +214,6 @@ export function useFestivalsDB(defaultValue: Event[]): [Event[], React.Dispatch<
   const setFestivals = useCallback(async (festivals: Event[]) => {
     await db.setFestivals(festivals as unknown as FestivalEvent[]);
   }, []);
-  
+
   return useIndexedDBState(getFestivals, setFestivals, 'festivals', defaultValue);
 }

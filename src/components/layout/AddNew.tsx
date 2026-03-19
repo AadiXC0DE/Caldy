@@ -37,15 +37,9 @@ export function AddNew() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddEventDialog 
-        open={isAddEventOpen} 
-        onOpenChange={setIsAddEventOpen} 
-      />
-      
-      <AddTaskDialog 
-        open={isAddTaskOpen} 
-        onOpenChange={setIsAddTaskOpen} 
-      />
+      <AddEventDialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen} />
+
+      <AddTaskDialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} />
     </>
   );
-} 
+}

@@ -9,10 +9,16 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-
 
 interface TaskTimeTrackingProps {
   taskId: string;
@@ -20,31 +26,32 @@ interface TaskTimeTrackingProps {
 }
 
 export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
-  const { 
-    updateTaskTimeTracking, 
-    startTaskTimer, 
-    stopTaskTimer, 
+  const {
+    updateTaskTimeTracking,
+    startTaskTimer,
+    stopTaskTimer,
     activeTimerTaskId,
     timerStatus,
     timerType,
     timerSessionType,
     pomodoroSettings,
-    updatePomodoroSettings
+    updatePomodoroSettings,
   } = useApp();
-  
+
   const [timeEstimate, setTimeEstimate] = useState(task.timeTracking?.estimatedMinutes || 0);
   const [activeTab, setActiveTab] = useState<'regular' | 'pomodoro'>('regular');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [totalPomodoros, setTotalPomodoros] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Current timer settings based on session type
-  const currentTimerMinutes = timerSessionType === 'work' 
-    ? pomodoroSettings.workMinutes 
-    : timerSessionType === 'break' 
-      ? pomodoroSettings.breakMinutes 
-      : pomodoroSettings.longBreakMinutes;
-  
+  const currentTimerMinutes =
+    timerSessionType === 'work'
+      ? pomodoroSettings.workMinutes
+      : timerSessionType === 'break'
+        ? pomodoroSettings.breakMinutes
+        : pomodoroSettings.longBreakMinutes;
+
   // Initialize from task data
   useEffect(() => {
     setTimeEstimate(task.timeTracking?.estimatedMinutes || 0);
@@ -53,23 +60,24 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
     }
     setTotalPomodoros(task.timeTracking?.pomodoroCount || 0);
   }, [task]);
-  
+
   // Timer logic
   useEffect(() => {
     // Only run timer if this task is the active one
     if (activeTimerTaskId === taskId && timerStatus === 'running') {
       intervalRef.current = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-        
+        setElapsedSeconds((prev) => prev + 1);
+
         // For Pomodoro timer, check if we need to switch sessions
         if (timerType === 'pomodoro') {
           const sessionTotalSeconds = currentTimerMinutes * 60;
-          if (elapsedSeconds >= sessionTotalSeconds - 1) { // -1 to account for this tick
+          if (elapsedSeconds >= sessionTotalSeconds - 1) {
+            // -1 to account for this tick
             // Session completed
             if (timerSessionType === 'work') {
               // Work session completed
-              setTotalPomodoros(prev => prev + 1);
-              
+              setTotalPomodoros((prev) => prev + 1);
+
               // Determine if we should take a long break
               const completedPomodoros = totalPomodoros + 1;
               if (completedPomodoros % pomodoroSettings.longBreakInterval === 0) {
@@ -85,13 +93,13 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
               // Break session completed
               console.log('Break completed, back to work!');
             }
-            
+
             // Reset timer for next session
             setElapsedSeconds(0);
           }
         }
       }, 1000);
-      
+
       return () => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -101,59 +109,59 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
       clearInterval(intervalRef.current);
     }
   }, [
-    activeTimerTaskId, 
-    taskId, 
-    timerStatus, 
-    timerType, 
-    timerSessionType, 
-    elapsedSeconds, 
-    currentTimerMinutes, 
-    totalPomodoros, 
-    pomodoroSettings
+    activeTimerTaskId,
+    taskId,
+    timerStatus,
+    timerType,
+    timerSessionType,
+    elapsedSeconds,
+    currentTimerMinutes,
+    totalPomodoros,
+    pomodoroSettings,
   ]);
-  
+
   // Save timer progress to task when it changes significantly
   useEffect(() => {
     if (elapsedSeconds % 60 === 0 && elapsedSeconds > 0) {
       updateTaskTimeTracking(taskId, {
         actualMinutes: Math.floor(elapsedSeconds / 60),
-        pomodoroCount: totalPomodoros
+        pomodoroCount: totalPomodoros,
       });
     }
   }, [elapsedSeconds, totalPomodoros, taskId, updateTaskTimeTracking]);
-  
+
   const handleStartTimer = () => {
     startTaskTimer(taskId, activeTab);
   };
-  
+
   const handleStopTimer = () => {
     stopTaskTimer(taskId);
-    
+
     // Save the final time
     updateTaskTimeTracking(taskId, {
       actualMinutes: Math.floor(elapsedSeconds / 60),
-      pomodoroCount: totalPomodoros
+      pomodoroCount: totalPomodoros,
     });
   };
-  
+
   const handleResetTimer = () => {
     setElapsedSeconds(0);
   };
-  
+
   const handleUpdateEstimate = () => {
     updateTaskTimeTracking(taskId, {
-      estimatedMinutes: timeEstimate
+      estimatedMinutes: timeEstimate,
     });
   };
-  
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-    
+
     return `${hours > 0 ? `${hours}h ` : ''}${minutes}m ${remainingSeconds}s`;
   };
-  
+
   // Calculate progress percentage
   const calculateProgress = () => {
     if (timerType === 'pomodoro') {
@@ -168,9 +176,9 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
       return 0; // No progress bar for unlimited timer
     }
   };
-  
+
   const isActive = activeTimerTaskId === taskId && timerStatus === 'running';
-  
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -178,13 +186,11 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
           <Clock className="mr-2 h-5 w-5" />
           Time Tracking
         </CardTitle>
-        <CardDescription>
-          Track time spent on this task
-        </CardDescription>
+        <CardDescription>Track time spent on this task</CardDescription>
       </CardHeader>
-      
-      <Tabs 
-        value={activeTab} 
+
+      <Tabs
+        value={activeTab}
         onValueChange={(value) => setActiveTab(value as 'regular' | 'pomodoro')}
         className="w-full"
       >
@@ -192,19 +198,15 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
           <TabsTrigger value="regular">Timer</TabsTrigger>
           <TabsTrigger value="pomodoro">Pomodoro</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="regular" className="space-y-4">
           <CardContent className="pt-4 space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <div className="text-sm text-muted-foreground">
-                  Time spent:
-                </div>
-                <div className="font-mono">
-                  {formatTime(elapsedSeconds)}
-                </div>
+                <div className="text-sm text-muted-foreground">Time spent:</div>
+                <div className="font-mono">{formatTime(elapsedSeconds)}</div>
               </div>
-              
+
               {timeEstimate > 0 && (
                 <div className="space-y-1">
                   <Progress value={calculateProgress()} className="h-2" />
@@ -215,7 +217,7 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                 </div>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="estimated-time">Estimated time (minutes)</Label>
@@ -236,24 +238,25 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
             </div>
           </CardContent>
         </TabsContent>
-        
+
         <TabsContent value="pomodoro" className="space-y-4">
           <CardContent className="pt-4 space-y-4">
             <div className="flex justify-between items-center">
               <Badge variant="outline">
-                {timerSessionType === 'work' ? 'Work Session' : 
-                  timerSessionType === 'break' ? 'Short Break' : 'Long Break'}
+                {timerSessionType === 'work'
+                  ? 'Work Session'
+                  : timerSessionType === 'break'
+                    ? 'Short Break'
+                    : 'Long Break'}
               </Badge>
               <Badge>{totalPomodoros} Pomodoros</Badge>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-center mb-2">
-                <div className="font-mono text-3xl">
-                  {formatTime(elapsedSeconds)}
-                </div>
+                <div className="font-mono text-3xl">{formatTime(elapsedSeconds)}</div>
               </div>
-              
+
               <div className="space-y-1">
                 <Progress value={calculateProgress()} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -262,7 +265,7 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                 </div>
               </div>
             </div>
-            
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full">
@@ -287,9 +290,11 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                         min={1}
                         className="col-span-2"
                         value={pomodoroSettings.workMinutes}
-                        onChange={(e) => updatePomodoroSettings({ 
-                          workMinutes: Number(e.target.value) 
-                        })}
+                        onChange={(e) =>
+                          updatePomodoroSettings({
+                            workMinutes: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -300,9 +305,11 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                         min={1}
                         className="col-span-2"
                         value={pomodoroSettings.breakMinutes}
-                        onChange={(e) => updatePomodoroSettings({ 
-                          breakMinutes: Number(e.target.value) 
-                        })}
+                        onChange={(e) =>
+                          updatePomodoroSettings({
+                            breakMinutes: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -313,9 +320,11 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                         min={1}
                         className="col-span-2"
                         value={pomodoroSettings.longBreakMinutes}
-                        onChange={(e) => updatePomodoroSettings({ 
-                          longBreakMinutes: Number(e.target.value) 
-                        })}
+                        onChange={(e) =>
+                          updatePomodoroSettings({
+                            longBreakMinutes: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-3 items-center gap-4">
@@ -326,9 +335,11 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
                         min={1}
                         className="col-span-2"
                         value={pomodoroSettings.longBreakInterval}
-                        onChange={(e) => updatePomodoroSettings({ 
-                          longBreakInterval: Number(e.target.value) 
-                        })}
+                        onChange={(e) =>
+                          updatePomodoroSettings({
+                            longBreakInterval: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -338,7 +349,7 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
           </CardContent>
         </TabsContent>
       </Tabs>
-      
+
       <CardFooter className="flex justify-between pt-2">
         {isActive ? (
           <Button variant="destructive" onClick={handleStopTimer}>
@@ -351,7 +362,7 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
             Start
           </Button>
         )}
-        
+
         <div className="space-x-2">
           {(elapsedSeconds > 0 || totalPomodoros > 0) && (
             <Button variant="outline" size="icon" onClick={handleResetTimer}>
@@ -367,4 +378,4 @@ export function TaskTimeTracking({ taskId, task }: TaskTimeTrackingProps) {
       </CardFooter>
     </Card>
   );
-} 
+}

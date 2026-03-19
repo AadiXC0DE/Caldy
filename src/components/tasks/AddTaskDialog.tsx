@@ -9,11 +9,5 @@ interface AddTaskDialogProps {
 }
 
 export default function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
-  return (
-    <TaskDetailDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      task={null}
-    />
-  );
-} 
+  return <TaskDetailDialog open={open} onOpenChange={onOpenChange} task={null} />;
+}
