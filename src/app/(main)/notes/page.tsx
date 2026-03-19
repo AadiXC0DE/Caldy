@@ -448,7 +448,7 @@ function NotesPageClient() {
                     <Textarea
                       value={selectedNote.content}
                       onChange={(event) => updateSelectedNote({ content: event.target.value })}
-                      className="min-h-[620px] resize-y border-0 bg-transparent p-0 font-mono text-[15px] leading-7 shadow-none focus-visible:ring-0"
+                      className="min-h-[620px] resize-y border-0 bg-transparent px-1 pr-3 font-mono text-[15px] leading-7 shadow-none focus-visible:ring-0"
                       placeholder="Write in markdown, capture tasks, and connect notes with [[wikilinks]]."
                     />
                   </div>

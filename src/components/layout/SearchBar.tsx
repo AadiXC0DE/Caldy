@@ -26,6 +26,7 @@ export function SearchBar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,7 @@ export function SearchBar() {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setIsMobileExpanded(false);
       }
     };
 
@@ -238,6 +240,7 @@ export function SearchBar() {
 
     // Close the search interface
     setIsOpen(false);
+    setIsMobileExpanded(false);
     setSearchQuery('');
     setResults([]);
   };
@@ -264,71 +267,104 @@ export function SearchBar() {
     }
   };
 
+  const searchInput = (
+    <div className="flex items-center rounded-full border transition-colors hover:border-primary/50">
+      <Search className="ml-3 h-4 w-4 text-muted-foreground" onClick={handleSearchFocus} />
+      <Input
+        ref={inputRef}
+        type="text"
+        value={searchQuery}
+        onChange={handleSearchChange}
+        onKeyDown={handleKeyDown}
+        onClick={() => setIsOpen(true)}
+        placeholder="Search events, tasks, holidays..."
+        className="h-9 border-0 bg-transparent! text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+      />
+      {searchQuery && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-1 h-7 w-7 rounded-full hover:bg-muted"
+          onClick={clearSearch}
+        >
+          <X className="h-4 w-4 text-muted-foreground dark:text-white" />
+          <span className="sr-only">Clear search</span>
+        </Button>
+      )}
+    </div>
+  );
+
+  const resultsDropdown =
+    isOpen && results.length > 0 ? (
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.15 }}
+        className="absolute right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto rounded-md border bg-background shadow-lg w-full sm:w-[320px] md:w-[350px]"
+      >
+        {results.map((result, index) => (
+          <div
+            key={`${result.type}-${result.id}`}
+            className={cn(
+              'flex cursor-pointer items-start px-3 py-2 hover:bg-muted',
+              focusedIndex === index && 'bg-muted',
+            )}
+            onClick={() => handleResultClick(result)}
+          >
+            <div className="mt-1 flex-shrink-0">{getIcon(result.type)}</div>
+            <div className="min-w-0 flex-grow">
+              <div className="truncate text-sm font-medium">{result.title}</div>
+              {result.date && (
+                <div className="text-xs text-muted-foreground">{format(result.date, 'PP')}</div>
+              )}
+              {result.description && (
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {result.description}
+                </div>
+              )}
+            </div>
+            <div className="ml-2 shrink-0 text-xs capitalize text-muted-foreground">
+              {result.type}
+            </div>
+          </div>
+        ))}
+      </motion.div>
+    ) : null;
+
   return (
     <div className="relative" ref={searchRef}>
-      <div className="flex items-center rounded-full border w-full sm:w-[300px] lg:w-[280px] hover:border-primary/50 transition-colors">
-        <Search className="h-4 w-4 ml-3 text-muted-foreground " onClick={handleSearchFocus} />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onKeyDown={handleKeyDown}
-          onClick={() => setIsOpen(true)}
-          placeholder="Search events, tasks, holidays..."
-          className="border-0 focus-visible:ring-0 bg-transparent! focus-visible:ring-offset-0 h-9 text-sm"
-        />
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 mr-1 hover:bg-muted rounded-full"
-            onClick={clearSearch}
-          >
-            <X className="h-4 w-4 text-muted-foreground dark:text-white" />
-            <span className="sr-only">Clear search</span>
-          </Button>
-        )}
+      <div className="hidden w-full sm:block">{searchInput}</div>
+      <div className="sm:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          onClick={() => {
+            setIsMobileExpanded((prev) => !prev);
+            setIsOpen(true);
+            requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+        >
+          <Search className="h-5 w-5" />
+          <span className="sr-only">Open search</span>
+        </Button>
+        <AnimatePresence>
+          {isMobileExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1rem))]"
+            >
+              {searchInput}
+              <AnimatePresence>{resultsDropdown}</AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {isOpen && results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-[60vh] overflow-y-auto w-full sm:w-[320px] md:w-[350px]"
-          >
-            {results.map((result, index) => (
-              <div
-                key={`${result.type}-${result.id}`}
-                className={cn(
-                  'px-3 py-2 cursor-pointer hover:bg-muted flex items-start',
-                  focusedIndex === index && 'bg-muted',
-                )}
-                onClick={() => handleResultClick(result)}
-              >
-                <div className="flex-shrink-0 mt-1">{getIcon(result.type)}</div>
-                <div className="flex-grow min-w-0">
-                  <div className="font-medium text-sm truncate">{result.title}</div>
-                  {result.date && (
-                    <div className="text-xs text-muted-foreground">{format(result.date, 'PP')}</div>
-                  )}
-                  {result.description && (
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {result.description}
-                    </div>
-                  )}
-                </div>
-                <div className="ml-2 text-xs text-muted-foreground capitalize shrink-0">
-                  {result.type}
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{!isMobileExpanded && resultsDropdown}</AnimatePresence>
     </div>
   );
 }

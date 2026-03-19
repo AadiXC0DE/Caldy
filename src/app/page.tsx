@@ -308,7 +308,7 @@ export default function Home() {
             </div>
           </nav>
 
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -368,7 +368,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.55, delay: 0.1 }}
-              className="relative"
+              className="relative hidden lg:block"
             >
               <div className="absolute -left-6 top-10 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
               <div className="absolute -bottom-10 right-8 h-28 w-28 rounded-full bg-sky-500/15 blur-2xl" />
@@ -381,8 +381,8 @@ export default function Home() {
                         <div className="text-sm font-medium text-muted-foreground">Today</div>
                         <div className="text-2xl font-semibold">Thursday, March 19</div>
                       </div>
-                      <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        Local by default
+                      <div className="rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                        Local
                       </div>
                     </div>
 
@@ -404,16 +404,16 @@ export default function Home() {
                             Tasks
                           </div>
                           <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                               <span>Finalize launch copy</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-muted-foreground/40" />
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" />
                               <span>Polish notes workspace</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-muted-foreground/40" />
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" />
                               <span>Write daily note</span>
                             </div>
                           </div>
@@ -458,10 +458,10 @@ export default function Home() {
 
                     <div className="rounded-[1.5rem] border bg-gradient-to-br from-primary/10 via-card to-card p-5">
                       <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                        <Cloud className="h-4 w-4 text-primary" />
+                        <Cloud className="h-4 w-4 shrink-0 text-primary" />
                         Pro privacy cloud
-                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                          Coming soon
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                          Soon
                         </span>
                       </div>
                       <ul className="space-y-2 text-sm text-muted-foreground">
@@ -471,7 +471,7 @@ export default function Home() {
                           'Sync notes, tasks, events, and habits',
                         ].map((item) => (
                           <li key={item} className="flex items-start gap-2">
-                            <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                             <span>{item}</span>
                           </li>
                         ))}
@@ -533,17 +533,17 @@ export default function Home() {
                   viewport={{ once: true }}
                   className={`overflow-hidden rounded-[2rem] border bg-gradient-to-br ${highlight.accent} p-[1px]`}
                 >
-                  <div className="h-full rounded-[calc(2rem-1px)] bg-card/90 p-7 backdrop-blur">
+                  <div className="flex h-full flex-col rounded-[calc(2rem-1px)] bg-card/90 p-7 backdrop-blur">
                     <div className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-primary/80">
                       {highlight.eyebrow}
                     </div>
                     <h3 className="mb-4 text-2xl font-semibold tracking-tight">
                       {highlight.title}
                     </h3>
-                    <p className="mb-6 leading-relaxed text-muted-foreground">
+                    <p className="mb-6 min-h-[96px] leading-relaxed text-muted-foreground">
                       {highlight.description}
                     </p>
-                    <ul className="space-y-3 text-sm">
+                    <ul className="mt-auto space-y-3 text-sm">
                       {highlight.items.map((item) => (
                         <li key={item} className="flex items-start gap-3">
                           <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
@@ -644,7 +644,7 @@ export default function Home() {
           <div className="container mx-auto px-4">
             <SectionHeading
               eyebrow="Comparison"
-              title="Know exactly what changes when you upgrade."
+              title="What changes with Pro?"
               description="Free is the best single-device setup. Pro is for people who want continuity, recovery, and premium workflow depth."
             />
 
@@ -761,7 +761,6 @@ export default function Home() {
 
             <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
               <span>Pro coming soon</span>
-              <span>Local-first launch</span>
             </div>
           </div>
         </div>

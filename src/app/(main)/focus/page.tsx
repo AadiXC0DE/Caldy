@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Play, Pause, RotateCcw, Coffee, Brain, Moon, Sun, Zap } from 'lucide-react';
+import { Timer, Play, Pause, RotateCcw, Coffee, Brain, Zap } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function FocusPageClient() {
@@ -22,7 +22,6 @@ function FocusPageClient() {
   const [isRunning, setIsRunning] = useState(false);
   const [sessionType, setSessionType] = useState<'work' | 'break' | 'long-break'>('work');
   const [completedPomodoros, setCompletedPomodoros] = useState(0);
-  const [isAmbient, setIsAmbient] = useState(false);
   const [totalFocusMinutes, setTotalFocusMinutes] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<Date | null>(null);
@@ -162,12 +161,10 @@ function FocusPageClient() {
   const currentSession = sessionColors[sessionType];
 
   return (
-    <div
-      className={`container mx-auto max-w-4xl px-4 transition-all duration-700 ${isAmbient ? 'opacity-90' : ''}`}
-    >
+    <div className="container mx-auto max-w-5xl px-4 transition-all duration-700">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center">
               <Timer className="h-8 w-8 mr-2 text-primary" />
@@ -175,19 +172,10 @@ function FocusPageClient() {
             </h1>
             <p className="text-muted-foreground mt-1">Deep work with Pomodoro technique</p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsAmbient(!isAmbient)}
-            className="rounded-full"
-            title={isAmbient ? 'Exit ambient mode' : 'Enter ambient mode'}
-          >
-            {isAmbient ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
         </div>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid gap-4 md:grid-cols-3 md:gap-6">
         {/* Timer Column */}
         <div className="md:col-span-2">
           <Card
@@ -210,7 +198,7 @@ function FocusPageClient() {
               </motion.div>
 
               {/* Circular Timer */}
-              <div className="relative w-72 h-72 md:w-80 md:h-80">
+              <div className="relative h-[260px] w-[260px] sm:h-72 sm:w-72 md:h-80 md:w-80">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 300 300">
                   {/* Track */}
                   <circle
@@ -241,7 +229,7 @@ function FocusPageClient() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <motion.span
                     key={timeLeft}
-                    className="text-6xl md:text-7xl font-mono font-bold tracking-tight"
+                    className="text-5xl font-mono font-bold tracking-tight sm:text-6xl md:text-7xl"
                   >
                     {formatTime(timeLeft)}
                   </motion.span>
@@ -253,7 +241,7 @@ function FocusPageClient() {
               </div>
 
               {/* Controls */}
-              <div className="flex items-center gap-4 mt-8">
+              <div className="mt-8 flex items-center gap-3 sm:gap-4">
                 <Button
                   variant="outline"
                   size="icon"
@@ -298,7 +286,7 @@ function FocusPageClient() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {/* Task Selector */}
           <Card>
             <CardHeader className="pb-3">
@@ -306,10 +294,10 @@ function FocusPageClient() {
             </CardHeader>
             <CardContent>
               <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full min-w-0">
                   <SelectValue placeholder="Select a task..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-w-[90vw]">
                   <SelectItem value="none">No task</SelectItem>
                   {incompleteTasks.map((task) => (
                     <SelectItem key={task.id} value={task.id}>
