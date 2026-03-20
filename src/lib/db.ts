@@ -1,15 +1,27 @@
 'use client';
 
 import Dexie, { type Table } from 'dexie';
-import type { Event, Task, Category, Tag, TaskView, Habit, Note } from './types';
+import type {
+  CalendarSource,
+  Category,
+  Event,
+  GlobalSearchDocument,
+  Habit,
+  ImportedCalendarEvent,
+  InboxAccount,
+  MailMessage,
+  MailThread,
+  Note,
+  Tag,
+  Task,
+  TaskView,
+} from './types';
 
-// Settings type for key-value storage
 interface Settings {
   key: string;
   value: unknown;
 }
 
-// Festival event type
 interface FestivalEvent {
   id: string;
   title: string;
@@ -22,18 +34,6 @@ interface FestivalEvent {
   color?: string;
 }
 
-// iCal event type (stored separately)
-interface ICalEvent {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  allDay: boolean;
-  description?: string;
-  location?: string;
-}
-
-// Database class
 class CaldyDatabase extends Dexie {
   events!: Table<Event, string>;
   tasks!: Table<Task, string>;
@@ -41,15 +41,19 @@ class CaldyDatabase extends Dexie {
   tags!: Table<Tag, string>;
   taskViews!: Table<TaskView, string>;
   settings!: Table<Settings, string>;
-  icalEvents!: Table<ICalEvent, string>;
+  icalEvents!: Table<ImportedCalendarEvent, string>;
   festivals!: Table<FestivalEvent, string>;
   habits!: Table<Habit, string>;
   notes!: Table<Note, string>;
+  calendarSources!: Table<CalendarSource, string>;
+  searchDocuments!: Table<GlobalSearchDocument, string>;
+  mailAccounts!: Table<InboxAccount, string>;
+  mailThreads!: Table<MailThread, string>;
+  mailMessages!: Table<MailMessage, string>;
 
   constructor() {
     super('CaldyDB');
 
-    // Define database schema
     this.version(1).stores({
       events: 'id, start, end, categoryId',
       tasks: 'id, dueDate, completed, priority, categoryId',
@@ -61,7 +65,6 @@ class CaldyDatabase extends Dexie {
       festivals: 'id',
     });
 
-    // Version 2: Add habits and notes tables
     this.version(2).stores({
       events: 'id, start, end, categoryId',
       tasks: 'id, dueDate, completed, priority, categoryId',
@@ -75,7 +78,6 @@ class CaldyDatabase extends Dexie {
       notes: 'id, pinned, createdAt, updatedAt',
     });
 
-    // Version 3: Expand notes for folders, templates, and daily notes
     this.version(3).stores({
       events: 'id, start, end, categoryId',
       tasks: 'id, dueDate, completed, priority, categoryId',
@@ -89,110 +91,148 @@ class CaldyDatabase extends Dexie {
       notes:
         'id, pinned, createdAt, updatedAt, folder, isTemplate, isDailyNote, dailyNoteDate, *tags',
     });
+
+    this.version(4)
+      .stores({
+        events: 'id, start, end, categoryId, archivedAt, deletedAt',
+        tasks: 'id, dueDate, completed, priority, categoryId, archivedAt, deletedAt',
+        categories: 'id',
+        tags: 'id',
+        taskViews: 'id',
+        settings: 'key',
+        icalEvents: 'id, sourceId, start, end',
+        festivals: 'id',
+        habits: 'id, createdAt, archivedAt, deletedAt',
+        notes:
+          'id, pinned, createdAt, updatedAt, folder, isTemplate, isDailyNote, dailyNoteDate, archivedAt, deletedAt, *tags',
+        calendarSources: 'id, enabled, kind, lastSyncedAt',
+        searchDocuments: 'id, type, entityId, updatedAt, *keywords',
+        mailAccounts: 'id, provider, status, connectedAt',
+        mailThreads: 'id, accountId, latestMessageAt, unreadCount, isArchived',
+        mailMessages: 'id, threadId, accountId, sentAt, isRead, *labels',
+      })
+      .upgrade(async (tx) => {
+        const settingsTable = tx.table<Settings, string>('settings');
+        const sourceTable = tx.table<CalendarSource, string>('calendarSources');
+        const importedTable = tx.table<ImportedCalendarEvent, string>('icalEvents');
+
+        const existingSources = await sourceTable.toArray();
+        const legacyIcalUrl = (await settingsTable.get('icalUrl'))?.value as string | undefined;
+
+        if (legacyIcalUrl && existingSources.length === 0) {
+          const now = new Date();
+          const defaultSource: CalendarSource = {
+            id: 'legacy-ical-source',
+            name: 'Imported calendar',
+            url: legacyIcalUrl,
+            providerLabel: 'Legacy import',
+            color: '#2f6fed',
+            enabled: true,
+            kind: 'ical',
+            createdAt: now,
+            updatedAt: now,
+          };
+          await sourceTable.put(defaultSource);
+
+          const legacyEvents = await importedTable.toArray();
+          await Promise.all(
+            legacyEvents.map((event) =>
+              importedTable.put({
+                ...event,
+                sourceId: event.sourceId || defaultSource.id,
+                sourceName: event.sourceName || defaultSource.name,
+                providerLabel: event.providerLabel || defaultSource.providerLabel,
+                isImported: true,
+              }),
+            ),
+          );
+        }
+      });
   }
 }
 
-// Create database instance
 export const db = new CaldyDatabase();
 
-// ============================================
-// CRUD operations for Events
-// ============================================
 export async function getAllEvents(): Promise<Event[]> {
-  return await db.events.toArray();
+  return db.events.toArray();
 }
 
 export async function addEvent(event: Event): Promise<string> {
-  return await db.events.add(event);
+  return db.events.add(event);
 }
 
 export async function updateEvent(id: string, updates: Partial<Event>): Promise<number> {
-  return await db.events.update(id, updates);
+  return db.events.update(id, updates);
 }
 
 export async function deleteEvent(id: string): Promise<void> {
   await db.events.delete(id);
 }
 
-// ============================================
-// CRUD operations for Tasks
-// ============================================
 export async function getAllTasks(): Promise<Task[]> {
-  return await db.tasks.toArray();
+  return db.tasks.toArray();
 }
 
 export async function addTask(task: Task): Promise<string> {
-  return await db.tasks.add(task);
+  return db.tasks.add(task);
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<number> {
-  return await db.tasks.update(id, updates);
+  return db.tasks.update(id, updates);
 }
 
 export async function deleteTask(id: string): Promise<void> {
   await db.tasks.delete(id);
 }
 
-// ============================================
-// CRUD operations for Categories
-// ============================================
 export async function getAllCategories(): Promise<Category[]> {
-  return await db.categories.toArray();
+  return db.categories.toArray();
 }
 
 export async function addCategory(category: Category): Promise<string> {
-  return await db.categories.add(category);
+  return db.categories.add(category);
 }
 
 export async function updateCategory(id: string, updates: Partial<Category>): Promise<number> {
-  return await db.categories.update(id, updates);
+  return db.categories.update(id, updates);
 }
 
 export async function deleteCategory(id: string): Promise<void> {
   await db.categories.delete(id);
 }
 
-// ============================================
-// CRUD operations for Tags
-// ============================================
 export async function getAllTags(): Promise<Tag[]> {
-  return await db.tags.toArray();
+  return db.tags.toArray();
 }
 
 export async function addTag(tag: Tag): Promise<string> {
-  return await db.tags.add(tag);
+  return db.tags.add(tag);
 }
 
 export async function updateTag(id: string, updates: Partial<Tag>): Promise<number> {
-  return await db.tags.update(id, updates);
+  return db.tags.update(id, updates);
 }
 
 export async function deleteTag(id: string): Promise<void> {
   await db.tags.delete(id);
 }
 
-// ============================================
-// CRUD operations for Task Views
-// ============================================
 export async function getAllTaskViews(): Promise<TaskView[]> {
-  return await db.taskViews.toArray();
+  return db.taskViews.toArray();
 }
 
 export async function addTaskView(taskView: TaskView): Promise<string> {
-  return await db.taskViews.add(taskView);
+  return db.taskViews.add(taskView);
 }
 
 export async function updateTaskView(id: string, updates: Partial<TaskView>): Promise<number> {
-  return await db.taskViews.update(id, updates);
+  return db.taskViews.update(id, updates);
 }
 
 export async function deleteTaskView(id: string): Promise<void> {
   await db.taskViews.delete(id);
 }
 
-// ============================================
-// Settings operations (key-value store)
-// ============================================
 export async function getSetting<T>(key: string): Promise<T | undefined> {
   const setting = await db.settings.get(key);
   return setting?.value as T | undefined;
@@ -206,25 +246,38 @@ export async function deleteSetting(key: string): Promise<void> {
   await db.settings.delete(key);
 }
 
-// ============================================
-// iCal Events operations
-// ============================================
-export async function getAllICalEvents(): Promise<ICalEvent[]> {
-  return await db.icalEvents.toArray();
+export async function getAllImportedCalendarEvents(): Promise<ImportedCalendarEvent[]> {
+  return db.icalEvents.toArray();
 }
 
-export async function setICalEvents(events: ICalEvent[]): Promise<void> {
+export async function setImportedCalendarEvents(events: ImportedCalendarEvent[]): Promise<void> {
   await db.transaction('rw', db.icalEvents, async () => {
     await db.icalEvents.clear();
     await db.icalEvents.bulkPut(events);
   });
 }
 
-// ============================================
-// Festivals operations
-// ============================================
+export async function getAllICalEvents(): Promise<ImportedCalendarEvent[]> {
+  return getAllImportedCalendarEvents();
+}
+
+export async function setICalEvents(events: ImportedCalendarEvent[]): Promise<void> {
+  await setImportedCalendarEvents(events);
+}
+
+export async function getAllCalendarSources(): Promise<CalendarSource[]> {
+  return db.calendarSources.toArray();
+}
+
+export async function setCalendarSources(sources: CalendarSource[]): Promise<void> {
+  await db.transaction('rw', db.calendarSources, async () => {
+    await db.calendarSources.clear();
+    await db.calendarSources.bulkPut(sources);
+  });
+}
+
 export async function getAllFestivals(): Promise<FestivalEvent[]> {
-  return await db.festivals.toArray();
+  return db.festivals.toArray();
 }
 
 export async function setFestivals(festivals: FestivalEvent[]): Promise<void> {
@@ -234,47 +287,82 @@ export async function setFestivals(festivals: FestivalEvent[]): Promise<void> {
   });
 }
 
-// ============================================
-// CRUD operations for Habits
-// ============================================
 export async function getAllHabits(): Promise<Habit[]> {
-  return await db.habits.toArray();
+  return db.habits.toArray();
 }
 
 export async function addHabit(habit: Habit): Promise<string> {
-  return await db.habits.add(habit);
+  return db.habits.add(habit);
 }
 
 export async function updateHabit(id: string, updates: Partial<Habit>): Promise<number> {
-  return await db.habits.update(id, updates);
+  return db.habits.update(id, updates);
 }
 
 export async function deleteHabit(id: string): Promise<void> {
   await db.habits.delete(id);
 }
 
-// ============================================
-// CRUD operations for Notes
-// ============================================
 export async function getAllNotes(): Promise<Note[]> {
-  return await db.notes.toArray();
+  return db.notes.toArray();
 }
 
 export async function addNote(note: Note): Promise<string> {
-  return await db.notes.add(note);
+  return db.notes.add(note);
 }
 
 export async function updateNote(id: string, updates: Partial<Note>): Promise<number> {
-  return await db.notes.update(id, updates);
+  return db.notes.update(id, updates);
 }
 
 export async function deleteNote(id: string): Promise<void> {
   await db.notes.delete(id);
 }
 
-// ============================================
-// Data Export & Import
-// ============================================
+export async function getAllSearchDocuments(): Promise<GlobalSearchDocument[]> {
+  return db.searchDocuments.toArray();
+}
+
+export async function setSearchDocuments(documents: GlobalSearchDocument[]): Promise<void> {
+  await db.transaction('rw', db.searchDocuments, async () => {
+    await db.searchDocuments.clear();
+    await db.searchDocuments.bulkPut(documents);
+  });
+}
+
+export async function getAllMailAccounts(): Promise<InboxAccount[]> {
+  return db.mailAccounts.toArray();
+}
+
+export async function setMailAccounts(accounts: InboxAccount[]): Promise<void> {
+  await db.transaction('rw', db.mailAccounts, async () => {
+    await db.mailAccounts.clear();
+    await db.mailAccounts.bulkPut(accounts);
+  });
+}
+
+export async function getAllMailThreads(): Promise<MailThread[]> {
+  return db.mailThreads.toArray();
+}
+
+export async function setMailThreads(threads: MailThread[]): Promise<void> {
+  await db.transaction('rw', db.mailThreads, async () => {
+    await db.mailThreads.clear();
+    await db.mailThreads.bulkPut(threads);
+  });
+}
+
+export async function getAllMailMessages(): Promise<MailMessage[]> {
+  return db.mailMessages.toArray();
+}
+
+export async function setMailMessages(messages: MailMessage[]): Promise<void> {
+  await db.transaction('rw', db.mailMessages, async () => {
+    await db.mailMessages.clear();
+    await db.mailMessages.bulkPut(messages);
+  });
+}
+
 export async function exportAllData(): Promise<Record<string, unknown>> {
   const [
     events,
@@ -285,8 +373,13 @@ export async function exportAllData(): Promise<Record<string, unknown>> {
     settings,
     habits,
     notes,
-    icalEvents,
+    importedCalendarEvents,
     festivals,
+    calendarSources,
+    searchDocuments,
+    mailAccounts,
+    mailThreads,
+    mailMessages,
   ] = await Promise.all([
     db.events.toArray(),
     db.tasks.toArray(),
@@ -298,10 +391,15 @@ export async function exportAllData(): Promise<Record<string, unknown>> {
     db.notes.toArray(),
     db.icalEvents.toArray(),
     db.festivals.toArray(),
+    db.calendarSources.toArray(),
+    db.searchDocuments.toArray(),
+    db.mailAccounts.toArray(),
+    db.mailThreads.toArray(),
+    db.mailMessages.toArray(),
   ]);
 
   return {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     data: {
       events,
@@ -312,8 +410,13 @@ export async function exportAllData(): Promise<Record<string, unknown>> {
       settings,
       habits,
       notes,
-      icalEvents,
+      importedCalendarEvents,
       festivals,
+      calendarSources,
+      searchDocuments,
+      mailAccounts,
+      mailThreads,
+      mailMessages,
     },
   };
 }
@@ -335,9 +438,13 @@ export async function importAllData(importData: Record<string, unknown>): Promis
       db.notes,
       db.icalEvents,
       db.festivals,
+      db.calendarSources,
+      db.searchDocuments,
+      db.mailAccounts,
+      db.mailThreads,
+      db.mailMessages,
     ],
     async () => {
-      // Clear all tables
       await Promise.all([
         db.events.clear(),
         db.tasks.clear(),
@@ -349,9 +456,13 @@ export async function importAllData(importData: Record<string, unknown>): Promis
         db.notes.clear(),
         db.icalEvents.clear(),
         db.festivals.clear(),
+        db.calendarSources.clear(),
+        db.searchDocuments.clear(),
+        db.mailAccounts.clear(),
+        db.mailThreads.clear(),
+        db.mailMessages.clear(),
       ]);
 
-      // Import data into each table
       if (data.events?.length) await db.events.bulkPut(data.events as Event[]);
       if (data.tasks?.length) await db.tasks.bulkPut(data.tasks as Task[]);
       if (data.categories?.length) await db.categories.bulkPut(data.categories as Category[]);
@@ -360,15 +471,31 @@ export async function importAllData(importData: Record<string, unknown>): Promis
       if (data.settings?.length) await db.settings.bulkPut(data.settings as Settings[]);
       if (data.habits?.length) await db.habits.bulkPut(data.habits as Habit[]);
       if (data.notes?.length) await db.notes.bulkPut(data.notes as Note[]);
-      if (data.icalEvents?.length) await db.icalEvents.bulkPut(data.icalEvents as ICalEvent[]);
+      if (data.importedCalendarEvents?.length) {
+        await db.icalEvents.bulkPut(data.importedCalendarEvents as ImportedCalendarEvent[]);
+      } else if (data.icalEvents?.length) {
+        await db.icalEvents.bulkPut(data.icalEvents as ImportedCalendarEvent[]);
+      }
       if (data.festivals?.length) await db.festivals.bulkPut(data.festivals as FestivalEvent[]);
+      if (data.calendarSources?.length) {
+        await db.calendarSources.bulkPut(data.calendarSources as CalendarSource[]);
+      }
+      if (data.searchDocuments?.length) {
+        await db.searchDocuments.bulkPut(data.searchDocuments as GlobalSearchDocument[]);
+      }
+      if (data.mailAccounts?.length) {
+        await db.mailAccounts.bulkPut(data.mailAccounts as InboxAccount[]);
+      }
+      if (data.mailThreads?.length) {
+        await db.mailThreads.bulkPut(data.mailThreads as MailThread[]);
+      }
+      if (data.mailMessages?.length) {
+        await db.mailMessages.bulkPut(data.mailMessages as MailMessage[]);
+      }
     },
   );
 }
 
-// ============================================
-// Migration from localStorage
-// ============================================
 const STORAGE_KEYS = {
   events: 'caldy-events',
   tasks: 'caldy-tasks',
@@ -385,7 +512,6 @@ const STORAGE_KEYS = {
   festivals: 'caldy-festivals',
 };
 
-// Helper to parse dates from JSON
 function parseDates<T>(data: T): T {
   if (typeof data !== 'object' || data === null) return data;
 
@@ -403,10 +529,10 @@ function parseDates<T>(data: T): T {
       result[key] = value;
     }
   }
+
   return result as T;
 }
 
-// Helper to load from localStorage
 function loadFromLocalStorage<T>(key: string): T | null {
   if (typeof window === 'undefined') return null;
 
@@ -420,67 +546,62 @@ function loadFromLocalStorage<T>(key: string): T | null {
 }
 
 export async function migrateFromLocalStorage(): Promise<boolean> {
-  // Check if already migrated
   const migrated = await getSetting<boolean>('migrated_from_localstorage');
   if (migrated) {
-    return false; // Already migrated
+    return false;
   }
 
-  console.log('Starting migration from localStorage to IndexedDB...');
-
   try {
-    // Migrate events
     const events = loadFromLocalStorage<Event[]>(STORAGE_KEYS.events);
-    if (events && events.length > 0) {
-      await db.events.bulkPut(events);
-      console.log(`Migrated ${events.length} events`);
-    }
+    if (events?.length) await db.events.bulkPut(events);
 
-    // Migrate tasks
     const tasks = loadFromLocalStorage<Task[]>(STORAGE_KEYS.tasks);
-    if (tasks && tasks.length > 0) {
-      await db.tasks.bulkPut(tasks);
-      console.log(`Migrated ${tasks.length} tasks`);
-    }
+    if (tasks?.length) await db.tasks.bulkPut(tasks);
 
-    // Migrate categories
     const categories = loadFromLocalStorage<Category[]>(STORAGE_KEYS.categories);
-    if (categories && categories.length > 0) {
-      await db.categories.bulkPut(categories);
-      console.log(`Migrated ${categories.length} categories`);
-    }
+    if (categories?.length) await db.categories.bulkPut(categories);
 
-    // Migrate tags
     const tags = loadFromLocalStorage<Tag[]>(STORAGE_KEYS.tags);
-    if (tags && tags.length > 0) {
-      await db.tags.bulkPut(tags);
-      console.log(`Migrated ${tags.length} tags`);
-    }
+    if (tags?.length) await db.tags.bulkPut(tags);
 
-    // Migrate task views
     const taskViews = loadFromLocalStorage<TaskView[]>(STORAGE_KEYS.taskViews);
-    if (taskViews && taskViews.length > 0) {
-      await db.taskViews.bulkPut(taskViews);
-      console.log(`Migrated ${taskViews.length} task views`);
+    if (taskViews?.length) await db.taskViews.bulkPut(taskViews);
+
+    const legacyIcalUrl = loadFromLocalStorage<string>(STORAGE_KEYS.icalUrl);
+    const legacyIcalEvents = loadFromLocalStorage<ImportedCalendarEvent[]>(STORAGE_KEYS.icalEvents);
+    if (legacyIcalUrl) {
+      const now = new Date();
+      const source: CalendarSource = {
+        id: 'legacy-ical-source',
+        name: 'Imported calendar',
+        url: legacyIcalUrl,
+        providerLabel: 'Migrated',
+        color: '#2f6fed',
+        enabled: true,
+        kind: 'ical',
+        createdAt: now,
+        updatedAt: now,
+      };
+      await db.calendarSources.put(source);
+      await setSetting('icalUrl', legacyIcalUrl);
+
+      if (legacyIcalEvents?.length) {
+        await db.icalEvents.bulkPut(
+          legacyIcalEvents.map((event) => ({
+            ...event,
+            sourceId: event.sourceId || source.id,
+            sourceName: event.sourceName || source.name,
+            providerLabel: event.providerLabel || source.providerLabel,
+            isImported: true,
+          })),
+        );
+      }
     }
 
-    // Migrate iCal events
-    const icalEvents = loadFromLocalStorage<ICalEvent[]>(STORAGE_KEYS.icalEvents);
-    if (icalEvents && icalEvents.length > 0) {
-      await db.icalEvents.bulkPut(icalEvents);
-      console.log(`Migrated ${icalEvents.length} iCal events`);
-    }
-
-    // Migrate festivals
     const festivals = loadFromLocalStorage<FestivalEvent[]>(STORAGE_KEYS.festivals);
-    if (festivals && festivals.length > 0) {
-      await db.festivals.bulkPut(festivals);
-      console.log(`Migrated ${festivals.length} festivals`);
-    }
+    if (festivals?.length) await db.festivals.bulkPut(festivals);
 
-    // Migrate settings
     const settings = [
-      { key: 'icalUrl', storageKey: STORAGE_KEYS.icalUrl },
       { key: 'darkMode', storageKey: STORAGE_KEYS.darkMode },
       { key: 'pomodoroSettings', storageKey: STORAGE_KEYS.pomodoroSettings },
       { key: 'festivalCountry', storageKey: STORAGE_KEYS.festivalCountry },
@@ -492,19 +613,15 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
       const value = loadFromLocalStorage<unknown>(storageKey);
       if (value !== null) {
         await setSetting(key, value);
-        console.log(`Migrated setting: ${key}`);
       }
     }
 
-    // Mark as migrated
     await setSetting('migrated_from_localstorage', true);
 
-    // Clear localStorage after successful migration
     Object.values(STORAGE_KEYS).forEach((key) => {
       localStorage.removeItem(key);
     });
 
-    console.log('Migration completed successfully!');
     return true;
   } catch (error) {
     console.error('Migration failed:', error);
@@ -512,5 +629,6 @@ export async function migrateFromLocalStorage(): Promise<boolean> {
   }
 }
 
-// Export type for use in other files
-export type { FestivalEvent, ICalEvent, Settings };
+export type ICalEvent = ImportedCalendarEvent;
+
+export type { FestivalEvent, Settings };

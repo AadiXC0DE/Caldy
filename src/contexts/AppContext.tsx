@@ -4,17 +4,23 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 
 import { v4 as uuidv4 } from 'uuid';
 import {
+  CalendarSource,
   Event,
-  Task,
   Category,
-  Tag,
   CalendarView,
-  TaskView,
-  RecurringPattern,
-  TimeTracking,
   Habit,
+  ImportedCalendarEvent,
+  InboxAccount,
+  MailMessage,
+  MailThread,
   Note,
+  RecurringPattern,
   Subtask,
+  Tag,
+  Task,
+  TaskView,
+  TimeTracking,
+  GlobalSearchDocument,
 } from '@/lib/types';
 import { toast } from 'react-hot-toast';
 import * as dbOps from '@/lib/db';
@@ -104,9 +110,17 @@ interface AppContextProps {
 
   // iCal Integration
   icalUrl: string | null;
-  icalEvents: Event[];
+  icalEvents: ImportedCalendarEvent[];
   setIcalUrl: (url: string | null) => void;
   refreshIcalEvents: () => Promise<void>;
+  calendarSources: CalendarSource[];
+  addCalendarSource: (
+    source: Omit<CalendarSource, 'id' | 'createdAt' | 'updatedAt' | 'lastSyncedAt' | 'lastError'>,
+  ) => string;
+  updateCalendarSource: (id: string, updates: Partial<CalendarSource>) => void;
+  removeCalendarSource: (id: string) => void;
+  toggleCalendarSource: (id: string, enabled: boolean) => void;
+  refreshCalendarSource: (id: string) => Promise<void>;
   isLoadingIcal: boolean;
 
   // Festivals
@@ -134,6 +148,18 @@ interface AppContextProps {
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   toggleNotePin: (id: string) => void;
+  archiveNote: (id: string) => void;
+  restoreNote: (id: string) => void;
+
+  // Search
+  searchDocuments: GlobalSearchDocument[];
+
+  // Inbox
+  mailAccounts: InboxAccount[];
+  mailThreads: MailThread[];
+  mailMessages: MailMessage[];
+  importMailBundle: (payload: string) => { accountId: string; threadCount: number };
+  markMailThreadRead: (threadId: string, read: boolean) => void;
 
   // Subtasks
   addSubtask: (taskId: string, title: string) => void;
@@ -209,6 +235,15 @@ const defaultPomodoroSettings = {
 
 const DEFAULT_NOTE_FOLDER = 'Workspace';
 const DAILY_NOTE_FOLDER = 'Daily Notes';
+const LEGACY_DEFAULT_NOTE_CONTENT = `# Untitled note
+
+## Next actions
+- [ ] Capture the next step
+
+## Context
+
+Link related work with [[Another Note]]
+`;
 
 function uniqueStrings(values: string[] | undefined): string[] {
   if (!values) return [];
@@ -243,6 +278,53 @@ function normalizeNote(note: Note): Note {
   };
 }
 
+function sanitizeSearchBody(value?: string | null) {
+  if (!value) return '';
+
+  return value
+    .replace(/\[\[([^[\]]+)\]\]/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/[*_~`>|-]/g, ' ')
+    .replace(/\[(x| )\]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 280);
+}
+
+function isLegacyPlaceholderNote(note: Note) {
+  return (
+    note.title === 'Untitled note' &&
+    note.content.trim() === LEGACY_DEFAULT_NOTE_CONTENT.trim() &&
+    (note.folder || DEFAULT_NOTE_FOLDER) === DEFAULT_NOTE_FOLDER &&
+    !note.pinned &&
+    !(note.tags || []).length &&
+    !note.isTemplate &&
+    !note.isDailyNote &&
+    !(note.linkedTaskIds || []).length &&
+    !(note.linkedEventIds || []).length &&
+    !(note.linkedNoteTitles || []).length &&
+    !note.archivedAt &&
+    !note.deletedAt
+  );
+}
+
+function collapseLegacyPlaceholderNotes(notes: Note[]) {
+  const placeholderNotes = notes.filter(isLegacyPlaceholderNote);
+
+  if (placeholderNotes.length <= 1) {
+    return notes;
+  }
+
+  const [keep] = [...placeholderNotes].sort(
+    (left, right) =>
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+  );
+
+  return notes.filter((note) => !isLegacyPlaceholderNote(note) || note.id === keep.id);
+}
+
 // Helper function to sync data to IndexedDB is removed in favor of direct DB operations
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -270,8 +352,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pomodoroSettings, setPomodoroSettings] = useState(defaultPomodoroSettings);
 
   // Add iCal state
-  const [icalUrl, setIcalUrl] = useState<string | null>(null);
-  const [icalEvents, setIcalEvents] = useState<Event[]>([]);
+  const [icalUrl, setIcalUrlState] = useState<string | null>(null);
+  const [calendarSources, setCalendarSources] = useState<CalendarSource[]>([]);
+  const [icalEvents, setIcalEvents] = useState<ImportedCalendarEvent[]>([]);
   const [isLoadingIcal, setIsLoadingIcal] = useState(false);
 
   const [festivals, setFestivals] = useState<Event[]>([]);
@@ -286,6 +369,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Habits & Notes
   const [habits, setHabits] = useState<Habit[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [searchDocuments, setSearchDocuments] = useState<GlobalSearchDocument[]>([]);
+  const [mailAccounts, setMailAccounts] = useState<InboxAccount[]>([]);
+  const [mailThreads, setMailThreads] = useState<MailThread[]>([]);
+  const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
 
   // Confetti
   const [showConfetti, setShowConfetti] = useState(false);
@@ -331,7 +418,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Load habits and notes
         const [dbHabits, dbNotes] = await Promise.all([dbOps.getAllHabits(), dbOps.getAllNotes()]);
         if (dbHabits.length > 0) setHabits(dbHabits);
-        if (dbNotes.length > 0) setNotes(dbNotes.map(normalizeNote));
+        if (dbNotes.length > 0) {
+          setNotes(collapseLegacyPlaceholderNotes(dbNotes.map(normalizeNote)));
+        }
 
         // Load settings from IndexedDB
         const [
@@ -354,7 +443,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const activeViewSetting = await dbOps.getSetting<string>('activeTaskView');
         if (activeViewSetting) setActiveTaskView(activeViewSetting);
 
-        if (icalUrlSetting !== undefined) setIcalUrl(icalUrlSetting);
+        if (icalUrlSetting !== undefined) setIcalUrlState(icalUrlSetting);
         if (darkModeSetting !== undefined) {
           setDarkMode(darkModeSetting);
           document.documentElement.classList.toggle('dark', darkModeSetting);
@@ -365,17 +454,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (showFestivalsSetting !== undefined) setShowFestivals(showFestivalsSetting);
 
         // Load iCal events and festivals if cached
-        const [dbICalEvents, dbFestivals] = await Promise.all([
-          dbOps.getAllICalEvents(),
-          dbOps.getAllFestivals(),
-        ]);
+        const [dbICalEvents, dbFestivals, dbCalendarSources, dbSearchDocuments, dbMailAccounts, dbMailThreads, dbMailMessages] =
+          await Promise.all([
+            dbOps.getAllImportedCalendarEvents(),
+            dbOps.getAllFestivals(),
+            dbOps.getAllCalendarSources(),
+            dbOps.getAllSearchDocuments(),
+            dbOps.getAllMailAccounts(),
+            dbOps.getAllMailThreads(),
+            dbOps.getAllMailMessages(),
+          ]);
 
-        if (dbICalEvents && dbICalEvents.length > 0) {
-          setIcalEvents(dbICalEvents as unknown as Event[]);
+        if (dbICalEvents.length > 0) {
+          setIcalEvents(dbICalEvents);
         }
 
-        if (dbFestivals && dbFestivals.length > 0) {
+        if (dbFestivals.length > 0) {
           setFestivals(dbFestivals as unknown as Event[]);
+        }
+
+        if (dbCalendarSources.length > 0) {
+          setCalendarSources(dbCalendarSources);
+        }
+
+        if (dbSearchDocuments.length > 0) {
+          setSearchDocuments(dbSearchDocuments);
+        }
+
+        if (dbMailAccounts.length > 0) {
+          setMailAccounts(dbMailAccounts);
+        }
+
+        if (dbMailThreads.length > 0) {
+          setMailThreads(dbMailThreads);
+        }
+
+        if (dbMailMessages.length > 0) {
+          setMailMessages(dbMailMessages);
         }
       } catch (error) {
         console.error('Error initializing IndexedDB:', error);
@@ -459,9 +574,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!isInitialized.current) return;
-    // Cast to unknown first to avoid type mismatch if strictly typed differently
-    dbOps.setICalEvents(icalEvents as unknown as import('@/lib/db').ICalEvent[]);
+    dbOps.setImportedCalendarEvents(icalEvents);
   }, [icalEvents]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setCalendarSources(calendarSources);
+  }, [calendarSources]);
 
   useEffect(() => {
     if (!isInitialized.current) return;
@@ -501,23 +620,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch((e) => console.error(e));
   }, [notes]);
 
-  // Function to fetch and parse iCal events
-  const refreshIcalEvents = useCallback(async () => {
-    if (!icalUrl) {
-      setIcalEvents([]);
-      return;
-    }
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setSearchDocuments(searchDocuments).catch((e) => console.error(e));
+  }, [searchDocuments]);
 
-    setIsLoadingIcal(true);
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setMailAccounts(mailAccounts).catch((e) => console.error(e));
+  }, [mailAccounts]);
 
-    try {
-      // Fetch iCal data from proxy to avoid CORS issues
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setMailThreads(mailThreads).catch((e) => console.error(e));
+  }, [mailThreads]);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    dbOps.setMailMessages(mailMessages).catch((e) => console.error(e));
+  }, [mailMessages]);
+
+  const refreshCalendarSource = useCallback(
+    async (sourceId: string) => {
+      const source = calendarSources.find((entry) => entry.id === sourceId);
+      if (!source || !source.enabled) return;
+
       const response = await fetch('/api/fetch-ical', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: icalUrl }),
+        body: JSON.stringify({ url: source.url }),
       });
 
       if (!response.ok) {
@@ -528,23 +661,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       const data = await response.json();
-      setIcalEvents(data.events || []);
-      toast.success('Calendar imported successfully');
+      const mappedEvents: ImportedCalendarEvent[] = (data.events || []).map(
+        (event: ImportedCalendarEvent) => ({
+          ...event,
+          sourceId: source.id,
+          sourceName: source.name,
+          providerLabel: source.providerLabel,
+          color: event.color || source.color,
+          isImported: true,
+        }),
+      );
+
+      setIcalEvents((prev) => {
+        const remaining = prev.filter((event) => event.sourceId !== source.id);
+        return [...remaining, ...mappedEvents];
+      });
+
+      setCalendarSources((prev) =>
+        prev.map((entry) =>
+          entry.id === source.id
+            ? {
+                ...entry,
+                lastSyncedAt: new Date(),
+                lastError: undefined,
+                updatedAt: new Date(),
+              }
+            : entry,
+        ),
+      );
+    },
+    [calendarSources],
+  );
+
+  const refreshIcalEvents = useCallback(async () => {
+    if (!calendarSources.length) {
+      setIcalEvents([]);
+      return;
+    }
+
+    setIsLoadingIcal(true);
+
+    try {
+      const enabledSources = calendarSources.filter((source) => source.enabled);
+      for (const source of enabledSources) {
+        await refreshCalendarSource(source.id);
+      }
+
+      toast.success(
+        enabledSources.length > 1 ? 'Calendars refreshed successfully' : 'Calendar imported successfully',
+      );
     } catch (error) {
       console.error('Error fetching iCal data:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to import calendar');
-      setIcalEvents([]);
     } finally {
       setIsLoadingIcal(false);
     }
-  }, [icalUrl]);
+  }, [calendarSources, refreshCalendarSource]);
 
-  // Fetch iCal events when URL changes
+  const setIcalUrl = useCallback((url: string | null) => {
+    setIcalUrlState(url);
+
+    if (!url) {
+      setCalendarSources((prev) => prev.filter((source) => source.id !== 'legacy-ical-source'));
+      setIcalEvents((prev) => prev.filter((event) => event.sourceId !== 'legacy-ical-source'));
+      return;
+    }
+
+    setCalendarSources((prev) => {
+      const existing = prev.find((source) => source.id === 'legacy-ical-source');
+      if (existing) {
+        return prev.map((source) =>
+          source.id === 'legacy-ical-source'
+            ? {
+                ...source,
+                url,
+                enabled: true,
+                updatedAt: new Date(),
+              }
+            : source,
+        );
+      }
+
+      return [
+        {
+          id: 'legacy-ical-source',
+          name: 'Imported calendar',
+          url,
+          providerLabel: 'Primary',
+          color: '#2f6fed',
+          enabled: true,
+          kind: 'ical',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        ...prev,
+      ];
+    });
+  }, []);
+
   useEffect(() => {
-    if (icalUrl) {
+    if (calendarSources.length === 0) {
+      if (icalUrl) {
+        setIcalUrlState(null);
+      }
+      setIcalEvents([]);
+      return;
+    }
+
+    const primarySource = calendarSources[0];
+    if (primarySource?.url !== icalUrl) {
+      setIcalUrlState(primarySource?.url || null);
+    }
+  }, [calendarSources, icalUrl]);
+
+  useEffect(() => {
+    if (calendarSources.some((source) => source.enabled)) {
       refreshIcalEvents();
     }
-  }, [icalUrl, refreshIcalEvents]);
+  }, [calendarSources, refreshIcalEvents]);
 
   // Function to fetch and refresh festivals
   const refreshFestivals = useCallback(async () => {
@@ -589,6 +823,191 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     refreshFestivals();
   }, [festivalCountry, refreshFestivals]);
+
+  useEffect(() => {
+    const documents: GlobalSearchDocument[] = [
+      ...events
+        .filter((event) => !event.deletedAt)
+        .map((event) => ({
+          id: `event-${event.id}`,
+          entityId: event.id,
+          title: event.title,
+          body: event.description,
+          section: 'Calendar',
+          type: 'event' as const,
+          keywords: uniqueStrings([event.location || '', ...(event.tags || [])]),
+          url: `/calendar?event=${event.id}&date=${new Date(event.start).toISOString().slice(0, 10)}`,
+          updatedAt: new Date(event.end || event.start),
+        })),
+      ...icalEvents.map((event) => ({
+        id: `imported-${event.id}`,
+        entityId: event.id,
+        title: event.title,
+        body: event.description,
+        section: event.sourceName || 'Imported calendar',
+        type: 'imported-event' as const,
+        keywords: uniqueStrings([event.location || '', event.providerLabel || '', event.sourceName || '']),
+        url: `/calendar?event=${event.id}&date=${new Date(event.start).toISOString().slice(0, 10)}`,
+        updatedAt: new Date(event.end || event.start),
+      })),
+      ...festivals.map((festival) => ({
+        id: `festival-${festival.id}`,
+        entityId: festival.id,
+        title: festival.title,
+        body: festival.description,
+        section: 'Holidays',
+        type: 'festival' as const,
+        keywords: uniqueStrings([festivalCountry, festivalColor]),
+        url: `/calendar?festival=${festival.id}&date=${new Date(festival.start).toISOString().slice(0, 10)}`,
+        updatedAt: new Date(festival.start),
+      })),
+      ...tasks
+        .filter((task) => !task.deletedAt)
+        .map((task) => ({
+          id: `task-${task.id}`,
+          entityId: task.id,
+          title: task.title,
+          body: task.description,
+          section: 'Tasks',
+          type: 'task' as const,
+          keywords: uniqueStrings([...(task.tags || []), task.priority]),
+          url: `/tasks?task=${task.id}`,
+          updatedAt: new Date(task.dueDate || task.date || Date.now()),
+        })),
+      ...notes
+        .filter((note) => !note.deletedAt)
+        .map((note) => ({
+          id: `note-${note.id}`,
+          entityId: note.id,
+          title: note.title,
+          body: sanitizeSearchBody(note.content),
+          section: note.folder || 'Workspace',
+          type: 'note' as const,
+          keywords: uniqueStrings([...(note.tags || []), ...(note.linkedNoteTitles || [])]),
+          url: `/notes?note=${note.id}`,
+          updatedAt: new Date(note.updatedAt),
+        })),
+      ...habits
+        .filter((habit) => !habit.deletedAt)
+        .map((habit) => ({
+          id: `habit-${habit.id}`,
+          entityId: habit.id,
+          title: habit.name,
+          body: `${habit.frequency} habit`,
+          section: 'Habits',
+          type: 'habit' as const,
+          keywords: uniqueStrings([habit.icon, habit.frequency]),
+          url: `/habits?habit=${habit.id}`,
+          updatedAt: new Date(habit.createdAt),
+        })),
+      ...taskViews.map((view) => ({
+        id: `task-view-${view.id}`,
+        entityId: view.id,
+        title: view.name,
+        body: 'Saved task view',
+        section: 'Tasks',
+        type: 'task-view' as const,
+        keywords: uniqueStrings([view.sortBy, view.sortDirection]),
+        url: `/tasks?view=${view.id}`,
+        updatedAt: new Date(),
+      })),
+      ...calendarSources.map((source) => ({
+        id: `calendar-source-${source.id}`,
+        entityId: source.id,
+        title: source.name,
+        body: source.providerLabel || source.url,
+        section: 'Settings',
+        type: 'calendar-source' as const,
+        keywords: uniqueStrings([source.kind, source.providerLabel || '', source.url]),
+        url: `/settings#calendar-sources`,
+        updatedAt: new Date(source.updatedAt),
+      })),
+      {
+        id: 'command-new-task',
+        entityId: 'new-task',
+        title: 'Create task',
+        body: 'Quick capture a new task',
+        section: 'Commands',
+        type: 'command',
+        keywords: ['capture', 'task', 'new'],
+        url: '/tasks?new=task',
+        updatedAt: new Date(),
+      },
+      {
+        id: 'command-new-event',
+        entityId: 'new-event',
+        title: 'Create event',
+        body: 'Quick capture a new event',
+        section: 'Commands',
+        type: 'command',
+        keywords: ['capture', 'event', 'new'],
+        url: '/calendar?new=event',
+        updatedAt: new Date(),
+      },
+      {
+        id: 'command-new-note',
+        entityId: 'new-note',
+        title: 'Create note',
+        body: 'Quick capture a new note',
+        section: 'Commands',
+        type: 'command',
+        keywords: ['capture', 'note', 'new'],
+        url: '/notes?new=note',
+        updatedAt: new Date(),
+      },
+    ];
+
+    setSearchDocuments(documents);
+  }, [
+    calendarSources,
+    events,
+    festivalColor,
+    festivalCountry,
+    festivals,
+    habits,
+    icalEvents,
+    notes,
+    tasks,
+    taskViews,
+  ]);
+
+  const addCalendarSource = (
+    source: Omit<CalendarSource, 'id' | 'createdAt' | 'updatedAt' | 'lastSyncedAt' | 'lastError'>,
+  ) => {
+    const now = new Date();
+    const newSource: CalendarSource = {
+      ...source,
+      id: uuidv4(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setCalendarSources((prev) => [...prev, newSource]);
+    if (!icalUrl) {
+      setIcalUrlState(newSource.url);
+    }
+    return newSource.id;
+  };
+
+  const updateCalendarSource = (id: string, updates: Partial<CalendarSource>) => {
+    setCalendarSources((prev) =>
+      prev.map((source) =>
+        source.id === id ? { ...source, ...updates, updatedAt: new Date() } : source,
+      ),
+    );
+  };
+
+  const removeCalendarSource = (id: string) => {
+    setCalendarSources((prev) => prev.filter((source) => source.id !== id));
+    setIcalEvents((prev) => prev.filter((event) => event.sourceId !== id));
+  };
+
+  const toggleCalendarSource = (id: string, enabled: boolean) => {
+    updateCalendarSource(id, { enabled });
+    if (!enabled) {
+      setIcalEvents((prev) => prev.filter((event) => event.sourceId !== id));
+    }
+  };
 
   // Event handlers
   const addEvent = (event: Omit<Event, 'id'>) => {
@@ -986,6 +1405,102 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const archiveNote = (id: string) => {
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.id === id ? normalizeNote({ ...note, archivedAt: new Date(), updatedAt: new Date() }) : note,
+      ),
+    );
+  };
+
+  const restoreNote = (id: string) => {
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.id === id
+          ? normalizeNote({ ...note, archivedAt: undefined, deletedAt: undefined, updatedAt: new Date() })
+          : note,
+      ),
+    );
+  };
+
+  const importMailBundle = (payload: string) => {
+    const parsed = JSON.parse(payload) as {
+      account?: Partial<InboxAccount>;
+      threads?: Partial<MailThread>[];
+      messages?: Partial<MailMessage>[];
+    };
+
+    const accountId = parsed.account?.id || uuidv4();
+    const account: InboxAccount = {
+      id: accountId,
+      name: parsed.account?.name || 'Imported inbox',
+      provider: parsed.account?.provider || 'local-import',
+      emailAddress: parsed.account?.emailAddress,
+      color: parsed.account?.color || '#2f6fed',
+      connectedAt: parsed.account?.connectedAt ? new Date(parsed.account.connectedAt) : new Date(),
+      lastImportedAt: new Date(),
+      lastError: undefined,
+      status: 'ready',
+    };
+
+    const messages: MailMessage[] = (parsed.messages || []).map((message, index) => ({
+      id: message.id || uuidv4(),
+      threadId: message.threadId || `thread-${index + 1}`,
+      accountId,
+      subject: message.subject || 'Imported message',
+      from: message.from || 'Unknown sender',
+      to: message.to || [],
+      cc: message.cc || [],
+      sentAt: message.sentAt ? new Date(message.sentAt) : new Date(),
+      preview: message.preview || message.text || '',
+      html: message.html,
+      text: message.text,
+      labels: message.labels || [],
+      isRead: Boolean(message.isRead),
+      isStarred: Boolean(message.isStarred),
+    }));
+
+    const threads: MailThread[] = (parsed.threads || []).map((thread, index) => {
+      const threadMessages = messages.filter(
+        (message) => message.threadId === (thread.id || `thread-${index + 1}`),
+      );
+      const latestMessage = [...threadMessages].sort(
+        (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+      )[0];
+
+      return {
+        id: thread.id || `thread-${index + 1}`,
+        accountId,
+        subject: thread.subject || latestMessage?.subject || 'Imported thread',
+        participants: thread.participants || uniqueStrings(threadMessages.flatMap((message) => [message.from, ...message.to])),
+        preview: thread.preview || latestMessage?.preview || '',
+        labels: thread.labels || [],
+        latestMessageAt: thread.latestMessageAt ? new Date(thread.latestMessageAt) : new Date(latestMessage?.sentAt || Date.now()),
+        unreadCount:
+          thread.unreadCount ??
+          threadMessages.filter((message) => !message.isRead).length,
+        isArchived: Boolean(thread.isArchived),
+        isPinned: Boolean(thread.isPinned),
+        messageIds: thread.messageIds || threadMessages.map((message) => message.id),
+      };
+    });
+
+    setMailAccounts((prev) => [...prev.filter((entry) => entry.id !== account.id), account]);
+    setMailMessages((prev) => [...prev.filter((message) => message.accountId !== account.id), ...messages]);
+    setMailThreads((prev) => [...prev.filter((thread) => thread.accountId !== account.id), ...threads]);
+
+    return { accountId: account.id, threadCount: threads.length };
+  };
+
+  const markMailThreadRead = (threadId: string, read: boolean) => {
+    setMailThreads((prev) =>
+      prev.map((thread) => (thread.id === threadId ? { ...thread, unreadCount: read ? 0 : Math.max(thread.unreadCount, 1) } : thread)),
+    );
+    setMailMessages((prev) =>
+      prev.map((message) => (message.threadId === threadId ? { ...message, isRead: read } : message)),
+    );
+  };
+
   // ============================================
   // Subtask handlers
   // ============================================
@@ -1105,6 +1620,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         icalEvents,
         setIcalUrl,
         refreshIcalEvents,
+        calendarSources,
+        addCalendarSource,
+        updateCalendarSource,
+        removeCalendarSource,
+        toggleCalendarSource,
+        refreshCalendarSource,
         isLoadingIcal,
 
         // Festivals
@@ -1132,6 +1653,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateNote: updateNoteHandler,
         deleteNote: deleteNoteHandler,
         toggleNotePin,
+        archiveNote,
+        restoreNote,
+
+        // Search
+        searchDocuments,
+
+        // Inbox
+        mailAccounts,
+        mailThreads,
+        mailMessages,
+        importMailBundle,
+        markMailThreadRead,
 
         // Subtasks
         addSubtask,

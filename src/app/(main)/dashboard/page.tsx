@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
-import { CalendarDays, CheckSquare, Clock, BellRing, AlarmClock } from 'lucide-react';
+import { CalendarDays, CheckSquare, Clock, BellRing, AlarmClock, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   format,
@@ -20,11 +20,13 @@ import CalendarView from '@/components/calendar/CalendarView';
 import TaskList from '@/components/tasks/TaskList';
 import AddEventDialog from '@/components/calendar/AddEventDialog';
 import AddTaskDialog from '@/components/tasks/AddTaskDialog';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 function DashboardPageClient() {
   const { events, tasks, categories } = useApp();
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [taskView, setTaskView] = useState<'today' | 'upcoming' | 'priority'>('today');
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -119,27 +121,89 @@ function DashboardPageClient() {
     );
   }, [currentTime, incompleteTasks]);
 
+  const taskViewMeta = {
+    today: {
+      title: 'Tasks Due Today',
+      icon: CheckSquare,
+      emptyLabel: 'No tasks due today',
+      emptyIcon: CheckSquare,
+      tasks: dueTodayTasks,
+    },
+    upcoming: {
+      title: 'Upcoming Tasks',
+      icon: Clock,
+      emptyLabel: 'No upcoming tasks',
+      emptyIcon: Clock,
+      tasks: upcomingTasks,
+    },
+    priority: {
+      title: 'High Priority Tasks',
+      icon: BellRing,
+      emptyLabel: 'No high priority tasks',
+      emptyIcon: BellRing,
+      tasks: highPriorityTasks,
+    },
+  } as const;
+
+  const renderTaskViewHeader = (view: keyof typeof taskViewMeta) => {
+    const currentView = taskViewMeta[view];
+    const ViewIcon = currentView.icon;
+
+    return (
+      <>
+        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+          <ViewIcon className="h-5 w-5 text-primary" />
+          {currentView.title}
+        </CardTitle>
+        <CardDescription>Switch views to focus on what needs attention next.</CardDescription>
+      </>
+    );
+  };
+
+  const renderTaskViewBody = (view: keyof typeof taskViewMeta) => {
+    const currentView = taskViewMeta[view];
+    const EmptyIcon = currentView.emptyIcon;
+
+    return (
+      <>
+        {currentView.tasks.length === 0 ? (
+          <div className="py-10 text-center">
+            <EmptyIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+            <p className="text-muted-foreground">{currentView.emptyLabel}</p>
+          </div>
+        ) : (
+          <TaskList tasks={currentView.tasks} />
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="space-y-5">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">
-              {greeting.emoji} {greeting.text}!
-            </h1>
-            <p className="text-muted-foreground mt-1 italic text-sm">&ldquo;{dailyQuote}&rdquo;</p>
-            <p className="text-muted-foreground text-xs mt-1">
-              {currentTime ? format(currentTime, 'EEEE, MMMM d, yyyy') : 'Loading today...'}{' '}
-              &middot; {dueTodayTasks.length} task
-              {dueTodayTasks.length !== 1 ? 's' : ''} due today
+      <PageHeader
+        title={`${greeting.emoji} ${greeting.text}`}
+        description={
+          <div className="space-y-2">
+            <p className="italic text-muted-foreground">&ldquo;{dailyQuote}&rdquo;</p>
+            <p>
+              {currentTime ? format(currentTime, 'EEEE, MMMM d, yyyy') : 'Loading today...'} ·{' '}
+              {dueTodayTasks.length} task{dueTodayTasks.length !== 1 ? 's' : ''} due today
             </p>
           </div>
-        </div>
-      </motion.div>
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setIsAddEventOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Event
+            </Button>
+            <Button onClick={() => setIsAddTaskOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Task
+            </Button>
+          </>
+        }
+      />
 
       {/* Deadline Countdown */}
       {nextDeadline &&
@@ -151,15 +215,9 @@ function DashboardPageClient() {
           const urgency =
             days <= 1 ? 'text-red-500' : days <= 3 ? 'text-yellow-500' : 'text-green-500';
           return (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <Card
-                className={`border-l-4 ${days <= 1 ? 'border-l-red-500' : days <= 3 ? 'border-l-yellow-500' : 'border-l-green-500'}`}
-              >
-                <CardContent className="py-3 px-4 flex items-center justify-between">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <Card className={`overflow-hidden border-l-4 ${days <= 1 ? 'border-l-red-500' : days <= 3 ? 'border-l-yellow-500' : 'border-l-green-500'}`}>
+                <CardContent className="flex items-center justify-between py-4 px-4">
                   <div className="flex items-center gap-3">
                     <AlarmClock className={`h-5 w-5 ${urgency}`} />
                     <div>
@@ -180,28 +238,28 @@ function DashboardPageClient() {
           );
         })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
         <motion.div
-          className="lg:col-span-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <Card className="h-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl flex items-center">
-                <CalendarDays className="h-5 w-5 mr-2 text-primary" />
+          <Card className="h-full overflow-hidden">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <CalendarDays className="h-5 w-5 text-primary" />
                 Today&apos;s Schedule
               </CardTitle>
+              <CardDescription>Calendar and events for the current day.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col h-full">
-              <div className="h-[45vh]">
+            <CardContent className="flex h-full flex-col">
+              <div className="h-[42vh] min-h-[320px]">
                 <CalendarView showHeader={false} />
               </div>
 
-              <div className="mt-5 space-y-3 flex-grow">
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  Today, {currentTime ? format(currentTime, 'EEEE, MMMM d') : 'your day'}
+              <div className="mt-5 flex-grow space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  {currentTime ? format(currentTime, 'EEEE, MMMM d') : 'Your day'}
                 </h3>
 
                 {todaysEvents.length === 0 ? (
@@ -244,7 +302,7 @@ function DashboardPageClient() {
                 )}
               </div>
 
-              <div className="mt-auto pt-3 text-right">
+              <div className="mt-auto pt-4 text-right">
                 <Button asChild variant="outline" size="sm">
                   <Link href="/calendar">View Full Calendar</Link>
                 </Button>
@@ -253,60 +311,30 @@ function DashboardPageClient() {
           </Card>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <Tabs defaultValue="today" className="h-full">
-            <TabsList className="grid grid-cols-3 mb-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }}>
+          <Tabs value={taskView} onValueChange={(value) => setTaskView(value as keyof typeof taskViewMeta)} className="h-full">
+            <TabsList className="mb-4 grid w-full grid-cols-3 rounded-xl bg-muted/60 p-1">
               <TabsTrigger value="today">Today</TabsTrigger>
               <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
               <TabsTrigger value="priority">Priority</TabsTrigger>
             </TabsList>
 
-            <Card className="h-full flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl flex items-center">
-                  <CheckSquare className="h-5 w-5 mr-2 text-primary" />
-                  <TabsContent value="today">Tasks Due Today</TabsContent>
-                  <TabsContent value="upcoming">Upcoming Tasks</TabsContent>
-                  <TabsContent value="priority">High Priority</TabsContent>
-                </CardTitle>
+            <Card className="flex h-full flex-col overflow-hidden">
+              <CardHeader className="pb-3">
+                {renderTaskViewHeader(taskView)}
               </CardHeader>
 
               <CardContent className="flex-grow">
                 <TabsContent value="today" className="h-[50vh] overflow-auto mt-0">
-                  {dueTodayTasks.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <CheckSquare className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No tasks due today</p>
-                    </div>
-                  ) : (
-                    <TaskList tasks={dueTodayTasks} />
-                  )}
+                  {renderTaskViewBody('today')}
                 </TabsContent>
 
                 <TabsContent value="upcoming" className="h-[50vh] overflow-auto mt-0">
-                  {upcomingTasks.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <Clock className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No upcoming tasks</p>
-                    </div>
-                  ) : (
-                    <TaskList tasks={upcomingTasks} />
-                  )}
+                  {renderTaskViewBody('upcoming')}
                 </TabsContent>
 
                 <TabsContent value="priority" className="h-[50vh] overflow-auto mt-0">
-                  {highPriorityTasks.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <BellRing className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No high priority tasks</p>
-                    </div>
-                  ) : (
-                    <TaskList tasks={highPriorityTasks} />
-                  )}
+                  {renderTaskViewBody('priority')}
                 </TabsContent>
               </CardContent>
 

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
-import { CheckSquare, PlusCircle, Search, Filter, ChevronDown } from 'lucide-react';
+import { PlusCircle, Search, Filter, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,18 +22,14 @@ import TaskList from '@/components/tasks/TaskList';
 import AddTaskDialog from '@/components/tasks/AddTaskDialog';
 import TaskDetailDialog from '@/components/tasks/TaskDetailDialog';
 import { TaskStats } from '@/components/tasks/TaskStats';
+import { PageHeader } from '@/components/layout/PageHeader';
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { TaskViewsDialog } from '@/components/tasks/TaskViewsDialog';
 
 function TasksPageClient() {
-  const { tasks, categories, taskViews, activeTaskView, setActiveTaskView, addTaskView } = useApp();
+  const { tasks, categories, taskViews, activeTaskView, setActiveTaskView } = useApp();
   const router = useRouter();
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +44,7 @@ function TasksPageClient() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isViewsDialogOpen, setIsViewsDialogOpen] = useState(false);
+  const quickCreateHandledRef = useRef(false);
 
   const handleAddTaskOpen = useCallback(() => {
     setIsAddTaskOpen(true);
@@ -83,23 +80,6 @@ function TasksPageClient() {
     },
     [taskViews, setActiveTaskView],
   );
-
-  const handleSaveCurrentView = useCallback(() => {
-    const name = prompt('Enter a name for this view:');
-    if (name) {
-      addTaskView({
-        name,
-        filters: {
-          searchTerm: searchTerm || undefined,
-          priority: filterPriority === 'all' ? undefined : filterPriority,
-          category: filterCategory === 'all' ? undefined : filterCategory,
-          completed: filterCompleted === 'all' ? undefined : filterCompleted,
-        },
-        sortBy: 'dueDate',
-        sortDirection: 'asc',
-      });
-    }
-  }, [addTaskView, searchTerm, filterPriority, filterCategory, filterCompleted]);
 
   // Filter tasks based on search term and filters
   const filteredTasks = useMemo(() => {
@@ -162,44 +142,23 @@ function TasksPageClient() {
 
   const headerSection = useMemo(
     () => (
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mb-6"
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <CheckSquare className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Tasks</h1>
-                <p className="text-muted-foreground">Manage and track your tasks</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-primary">
-                  {basicStats.completed}/{basicStats.total}
-                </div>
-                <div className="text-xs text-muted-foreground">completed</div>
-              </div>
-              <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${basicStats.progress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <PageHeader
+          title="Tasks"
+          description={
+            <>
+              <p>Plan, triage, and execute without piling filters and controls on top of the work itself.</p>
+              <p className="text-xs text-muted-foreground">
+                {basicStats.completed}/{basicStats.total} completed · {basicStats.progress}% complete
+              </p>
+            </>
+          }
+          actions={
+            <>
+              <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-2xl">
                   <span className="mr-1">
                     {mounted && activeTaskView
                       ? taskViews.find((v) => v.id === activeTaskView)?.name || 'All Tasks'
@@ -222,26 +181,29 @@ function TasksPageClient() {
                 </DropdownMenuItem>
                 {taskViewItems}
                 <Separator className="my-1" />
-                <DropdownMenuItem onSelect={handleSaveCurrentView}>
-                  Save current view...
-                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setIsViewsDialogOpen(true)}>
                   Manage views...
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button onClick={() => setShowFilters(!showFilters)} variant="outline" size="sm">
+            <Button onClick={() => setShowFilters(!showFilters)} variant="outline" size="sm" className="rounded-2xl">
               <Filter className="h-4 w-4 mr-1" />
               Filters
             </Button>
 
-            <Button onClick={handleAddTaskOpen}>
+            <Button variant="outline" size="sm" onClick={() => setIsViewsDialogOpen(true)} className="rounded-2xl">
+              Manage Views
+            </Button>
+
+            <Button onClick={handleAddTaskOpen} className="rounded-2xl">
               <PlusCircle className="h-4 w-4 mr-2" />
               New Task
             </Button>
-          </div>
-        </div>
+              </div>
+            </>
+          }
+        />
       </motion.div>
     ),
     [
@@ -249,7 +211,6 @@ function TasksPageClient() {
       taskViewItems,
       activeTaskView,
       taskViews,
-      handleSaveCurrentView,
       setActiveTaskView,
       setFilterPriority,
       setFilterCategory,
@@ -265,7 +226,7 @@ function TasksPageClient() {
     () => (
       <Collapsible open={showFilters} onOpenChange={setShowFilters}>
         <CollapsibleContent className="mb-6">
-          <div className="bg-muted/30 rounded-lg p-4">
+          <div className="rounded-[1.5rem] border bg-card/70 p-4 shadow-sm">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -370,9 +331,15 @@ function TasksPageClient() {
   }, [taskId]);
 
   useEffect(() => {
-    if (newItem === 'task') {
+    if (newItem === 'task' && !quickCreateHandledRef.current) {
+      quickCreateHandledRef.current = true;
       setIsAddTaskOpen(true);
       router.replace('/tasks');
+      return;
+    }
+
+    if (newItem !== 'task') {
+      quickCreateHandledRef.current = false;
     }
   }, [newItem, router]);
 

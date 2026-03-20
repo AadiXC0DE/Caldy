@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -12,8 +12,9 @@ import {
 } from '@/components/ui/select';
 import { useApp } from '@/contexts/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Play, Pause, RotateCcw, Coffee, Brain, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Zap } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 function FocusPageClient() {
   const { tasks, pomodoroSettings, updateTaskTimeTracking } = useApp();
@@ -161,33 +162,31 @@ function FocusPageClient() {
   const currentSession = sessionColors[sessionType];
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 transition-all duration-700">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center">
-              <Timer className="h-8 w-8 mr-2 text-primary" />
-              Focus Mode
-            </h1>
-            <p className="text-muted-foreground mt-1">Deep work with Pomodoro technique</p>
+    <div className="container mx-auto max-w-5xl space-y-6 px-4 transition-all duration-700">
+      <PageHeader
+        title="Focus Mode"
+        description={
+          <div className="space-y-2">
+            <p>Deep work with Pomodoro sessions designed to keep the pace steady.</p>
+            <p className="text-xs text-muted-foreground">
+              Work {pomodoroSettings.workMinutes}m · Break {pomodoroSettings.breakMinutes}m · Long
+              break {pomodoroSettings.longBreakMinutes}m
+            </p>
           </div>
-        </div>
-      </motion.div>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-3 md:gap-6">
         {/* Timer Column */}
         <div className="md:col-span-2">
-          <Card
-            className={`border-0 shadow-xl ${currentSession.bg} transition-colors duration-500`}
-          >
+          <Card className={`overflow-hidden border shadow-sm transition-colors duration-500 ${currentSession.bg}`}>
             <CardContent className="flex flex-col items-center py-12">
               {/* Session Label */}
               <motion.div
                 key={sessionType}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex items-center gap-2 mb-8 px-4 py-2 rounded-full ${currentSession.bg} border`}
+                className="mb-8 flex items-center gap-2 rounded-full border px-4 py-2"
               >
                 {sessionType === 'work' ? (
                   <Brain className="h-4 w-4" />
@@ -290,7 +289,8 @@ function FocusPageClient() {
           {/* Task Selector */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Link to Task</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em]">Link to Task</CardTitle>
+              <CardDescription>Optionally connect this session to one active task.</CardDescription>
             </CardHeader>
             <CardContent>
               <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
@@ -312,7 +312,10 @@ function FocusPageClient() {
           {/* Session Stats */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Today&apos;s Progress</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em]">
+                Today&apos;s Progress
+              </CardTitle>
+              <CardDescription>Quick glance at the work you’ve completed so far.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
@@ -344,7 +347,10 @@ function FocusPageClient() {
           {/* Timer Settings */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Timer Settings</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em]">
+                Timer Settings
+              </CardTitle>
+              <CardDescription>Current session lengths and break cadence.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">

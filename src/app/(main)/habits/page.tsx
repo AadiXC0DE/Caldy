@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useMemo, Suspense, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/contexts/AppContext';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays } from 'date-fns';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const HABIT_COLORS = [
   '#ef4444',
@@ -54,12 +56,29 @@ function getStreakCount(completedDates: string[]): number {
 
 function HabitsPageClient() {
   const { habits, addHabit, deleteHabit, toggleHabitDate } = useApp();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(HABIT_COLORS[0]);
   const [newIcon, setNewIcon] = useState(HABIT_ICONS[0]);
+  const quickCreateHandledRef = useRef(false);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const newItem = searchParams.get('new');
+
+  useEffect(() => {
+    if (newItem === 'habit' && !quickCreateHandledRef.current) {
+      quickCreateHandledRef.current = true;
+      setIsDialogOpen(true);
+      router.replace('/habits');
+      return;
+    }
+
+    if (newItem !== 'habit') {
+      quickCreateHandledRef.current = false;
+    }
+  }, [newItem, router]);
 
   // Generate heatmap data (last 91 days / 13 weeks)
   const heatmapDays = useMemo(() => {
@@ -86,20 +105,15 @@ function HabitsPageClient() {
 
   return (
     <div className="container mx-auto max-w-6xl px-4">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center">
-              <Flame className="h-8 w-8 mr-2 text-primary" />
-              Habits
-            </h1>
-            <p className="text-muted-foreground mt-1">Build consistency, one day at a time</p>
-          </div>
+      <PageHeader
+        title="Habits"
+        description={`${habits.length} tracked habit${habits.length === 1 ? '' : 's'} ready for today’s check-in.`}
+        icon={Flame}
+        actions={
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="shadow-sm">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4" />
                 New Habit
               </Button>
             </DialogTrigger>
@@ -109,7 +123,7 @@ function HabitsPageClient() {
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Name</label>
+                  <label className="mb-1 block text-sm font-medium">Name</label>
                   <Input
                     placeholder="e.g. Drink 8 glasses of water"
                     value={newName}
@@ -118,13 +132,13 @@ function HabitsPageClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Icon</label>
-                  <div className="flex gap-2 flex-wrap">
+                  <label className="mb-2 block text-sm font-medium">Icon</label>
+                  <div className="flex flex-wrap gap-2">
                     {HABIT_ICONS.map((icon) => (
                       <button
                         key={icon}
                         onClick={() => setNewIcon(icon)}
-                        className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center border-2 transition-all ${
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg border-2 text-xl transition-all ${
                           newIcon === icon
                             ? 'border-primary bg-primary/10 scale-110'
                             : 'border-transparent hover:bg-muted'
@@ -136,14 +150,14 @@ function HabitsPageClient() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Color</label>
-                  <div className="flex gap-2 flex-wrap">
+                  <label className="mb-2 block text-sm font-medium">Color</label>
+                  <div className="flex flex-wrap gap-2">
                     {HABIT_COLORS.map((color) => (
                       <button
                         key={color}
                         onClick={() => setNewColor(color)}
-                        className={`w-8 h-8 rounded-full transition-all ${
-                          newColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''
+                        className={`h-8 w-8 rounded-full transition-all ${
+                          newColor === color ? 'ring-2 ring-primary ring-offset-2 scale-110' : ''
                         }`}
                         style={{ backgroundColor: color }}
                       />
@@ -156,8 +170,8 @@ function HabitsPageClient() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-      </motion.div>
+        }
+      />
 
       {habits.length === 0 ? (
         <motion.div
@@ -247,8 +261,9 @@ function HabitsPageClient() {
 
           {/* Heatmap */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg">Activity Heatmap</CardTitle>
+              <CardDescription>See how consistent your habits have been over the last 13 weeks.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

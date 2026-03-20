@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,30 +17,38 @@ function CalendarPageClient() {
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [defaultDate, setDefaultDate] = useState(new Date());
   const [mounted, setMounted] = useState(false);
+  const quickCreateHandledRef = useRef(false);
   const quickCaptureTitle = searchParams.get('title') || '';
   const quickCaptureDescription = searchParams.get('description') || '';
   const quickCaptureSource = searchParams.get('source');
+  const newItem = searchParams.get('new');
+  const dateParam = searchParams.get('date');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    const newItem = searchParams.get('new');
-    const dateParam = searchParams.get('date');
-
     if (dateParam) {
       const parsedDate = new Date(dateParam);
       if (!Number.isNaN(parsedDate.getTime())) {
         setDefaultDate(parsedDate);
       }
     }
+  }, [dateParam]);
 
-    if (newItem === 'event') {
+  useEffect(() => {
+    if (newItem === 'event' && !quickCreateHandledRef.current) {
+      quickCreateHandledRef.current = true;
       setIsAddEventOpen(true);
       router.replace(dateParam ? `/calendar?date=${dateParam}` : '/calendar');
+      return;
     }
-  }, [router, searchParams]);
+
+    if (newItem !== 'event') {
+      quickCreateHandledRef.current = false;
+    }
+  }, [dateParam, newItem, router]);
 
   const handleChangeView = useCallback(
     (newView: 'month' | 'week' | 'day' | 'list') => {

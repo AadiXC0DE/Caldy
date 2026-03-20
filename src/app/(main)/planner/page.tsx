@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, Suspense } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
-import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   format,
@@ -16,6 +16,7 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
 
@@ -68,20 +69,12 @@ function PlannerPageClient() {
   const currentHour = new Date().getHours();
 
   return (
-    <div className="container mx-auto max-w-[1400px] px-4">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center">
-              <CalendarRange className="h-8 w-8 mr-2 text-primary" />
-              Weekly Planner
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              {format(weekDays[0], 'MMM d')} — {format(weekDays[6], 'MMM d, yyyy')}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+    <div className="container mx-auto max-w-[1400px] space-y-6 px-4">
+      <PageHeader
+        title="Weekly Planner"
+        description={`${format(weekDays[0], 'MMM d')} to ${format(weekDays[6], 'MMM d, yyyy')}`}
+        actions={
+          <>
             <Button
               variant="outline"
               size="icon"
@@ -99,14 +92,20 @@ function PlannerPageClient() {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-          </div>
-        </div>
-      </motion.div>
+          </>
+        }
+      />
 
       {/* Tasks Banner */}
       {tasksForWeek.length > 0 && (
         <Card className="mb-4">
-          <CardContent className="py-3 px-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold uppercase tracking-[0.2em]">
+              Tasks this week
+            </CardTitle>
+            <CardDescription>Quick view of due dates across the current week.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
             <div className="flex flex-wrap gap-2">
               {weekDays.map((day) => {
                 const dayTasks = getTasksForDay(day);
@@ -139,7 +138,7 @@ function PlannerPageClient() {
       )}
 
       {/* Time Grid */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
             {/* Day Headers */}

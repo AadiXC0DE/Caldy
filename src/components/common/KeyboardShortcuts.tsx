@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Keyboard } from 'lucide-react';
+import { openCommandPalette } from '@/components/layout/SearchBar';
 
 const SHORTCUTS = [
   { keys: ['⌘', 'K'], description: 'Open search' },
@@ -34,13 +35,7 @@ export function KeyboardShortcuts() {
       // Cmd/Ctrl + K → focus search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        const searchInput = document.querySelector(
-          'input[placeholder*="Search"]',
-        ) as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.click();
-        }
+        openCommandPalette();
       }
 
       // Cmd/Ctrl + N → new task

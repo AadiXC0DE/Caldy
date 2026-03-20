@@ -1,5 +1,17 @@
 export type Priority = 'low' | 'medium' | 'high';
 
+export type EntityLifecycle = {
+  archivedAt?: Date;
+  deletedAt?: Date;
+};
+
+export type Reminder = {
+  id: string;
+  at: Date;
+  type: 'task' | 'event';
+  acknowledgedAt?: Date;
+};
+
 export type Category = {
   id: string;
   name: string;
@@ -12,9 +24,8 @@ export type Tag = {
 };
 
 export type RecurringException = {
-  date: string; // ISO date string for the occurrence date
-  deleted?: boolean; // If true, this occurrence is deleted
-  // Modified fields for this specific occurrence
+  date: string;
+  deleted?: boolean;
   title?: string;
   description?: string;
   location?: string;
@@ -24,7 +35,7 @@ export type RecurringException = {
   categoryId?: string;
 };
 
-export type Event = {
+export type Event = EntityLifecycle & {
   id: string;
   title: string;
   start: Date;
@@ -38,11 +49,33 @@ export type Event = {
     interval: number;
     endDate?: Date;
     daysOfWeek?: number[];
-    exceptions?: RecurringException[]; // Exceptions for specific occurrences
+    exceptions?: RecurringException[];
   };
   tags?: string[];
   color?: string;
   reminder?: Date;
+  reminders?: Reminder[];
+};
+
+export type ImportedCalendarEvent = Event & {
+  sourceId: string;
+  sourceName?: string;
+  providerLabel?: string;
+  isImported: true;
+};
+
+export type CalendarSource = {
+  id: string;
+  name: string;
+  url: string;
+  providerLabel?: string;
+  color: string;
+  enabled: boolean;
+  kind: 'ical';
+  lastSyncedAt?: Date;
+  lastError?: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type RecurringPattern = {
@@ -50,7 +83,7 @@ export type RecurringPattern = {
   interval: number;
   endDate?: Date;
   occurrences?: number;
-  daysOfWeek?: number[]; // 0 = Sunday, 1 = Monday, etc.
+  daysOfWeek?: number[];
 };
 
 export type TimeTracking = {
@@ -76,7 +109,7 @@ export type Subtask = {
   completed: boolean;
 };
 
-export type Task = {
+export type Task = EntityLifecycle & {
   id: string;
   title: string;
   description?: string;
@@ -93,6 +126,9 @@ export type Task = {
   isTemplate?: boolean;
   dependsOn?: string[];
   subtasks?: Subtask[];
+  reminder?: Date;
+  reminders?: Reminder[];
+  linkedNoteIds?: string[];
 };
 
 export type TaskView = {
@@ -115,19 +151,18 @@ export type TaskView = {
 
 export type CalendarView = 'month' | 'week' | 'day' | 'list';
 
-// Habit Tracker types
-export type Habit = {
+export type Habit = EntityLifecycle & {
   id: string;
   name: string;
   color: string;
   icon: string;
   frequency: 'daily' | 'weekly';
-  completedDates: string[]; // ISO date strings (YYYY-MM-DD)
+  completedDates: string[];
   createdAt: Date;
+  isTemplate?: boolean;
 };
 
-// Notes types
-export type Note = {
+export type Note = EntityLifecycle & {
   id: string;
   title: string;
   content: string;
@@ -145,4 +180,92 @@ export type Note = {
   linkedEventIds?: string[];
   linkedTaskId?: string;
   linkedEventId?: string;
+};
+
+export type Template = {
+  id: string;
+  title: string;
+  type: 'task' | 'note' | 'event' | 'habit';
+  description?: string;
+  sourceId: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GlobalSearchDocument = {
+  id: string;
+  entityId: string;
+  title: string;
+  body?: string;
+  section?: string;
+  type:
+    | 'event'
+    | 'imported-event'
+    | 'task'
+    | 'festival'
+    | 'note'
+    | 'habit'
+    | 'task-view'
+    | 'calendar-source'
+    | 'mail-thread'
+    | 'command';
+  keywords?: string[];
+  url: string;
+  updatedAt: Date;
+};
+
+export type InboxAccount = {
+  id: string;
+  name: string;
+  provider: 'local-import' | 'gmail' | 'fastmail' | 'imap';
+  emailAddress?: string;
+  color: string;
+  connectedAt: Date;
+  lastImportedAt?: Date;
+  lastError?: string;
+  status: 'ready' | 'warning' | 'error';
+};
+
+export type MailLabel = {
+  id: string;
+  name: string;
+  color?: string;
+};
+
+export type MailMessage = {
+  id: string;
+  threadId: string;
+  accountId: string;
+  subject: string;
+  from: string;
+  to: string[];
+  cc?: string[];
+  sentAt: Date;
+  preview: string;
+  html?: string;
+  text?: string;
+  labels?: string[];
+  isRead: boolean;
+  isStarred?: boolean;
+};
+
+export type MailThread = {
+  id: string;
+  accountId: string;
+  subject: string;
+  participants: string[];
+  preview: string;
+  labels?: string[];
+  latestMessageAt: Date;
+  unreadCount: number;
+  isArchived?: boolean;
+  isPinned?: boolean;
+  messageIds: string[];
+};
+
+export type MailViewState = {
+  activeAccountId: string | 'all';
+  activeLabelId: string | 'all';
+  query: string;
+  selectedThreadId?: string;
 };

@@ -46,14 +46,13 @@ function LocalModeFooter({ isCollapsed }: { isCollapsed: boolean }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Free local mode</p>
-          <p className="text-xs text-muted-foreground">Your workspace stays on this device.</p>
+          <p className="text-xs text-muted-foreground">Private by default. Exportable any time.</p>
         </div>
-        <Badge variant="secondary">Coming soon</Badge>
+        <Badge variant="secondary">Local-first</Badge>
       </div>
-      <Button variant="outline" size="sm" className="mt-3 w-full" disabled>
-        <Crown className="mr-2 h-4 w-4" />
-        Pro coming soon
-      </Button>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Pro will add continuity features like encrypted backup and sync, not take away core tools.
+      </p>
     </div>
   );
 }
@@ -94,15 +93,14 @@ function ClerkSidebarFooter({ isCollapsed }: { isCollapsed: boolean }) {
           <div>
             <p className="text-sm font-semibold">Local-first launch</p>
             <p className="text-xs text-muted-foreground">
-              The full local product is live now. Pro and account features can be turned on later.
+              The core workspace is fully usable locally. Account features can layer on later.
             </p>
           </div>
-          <Badge variant="secondary">Free</Badge>
+          <Badge variant="secondary">Local-first</Badge>
         </div>
-        <Button variant="outline" size="sm" className="mt-3 w-full" disabled>
-          <Crown className="mr-2 h-4 w-4" />
-          Pro coming soon
-        </Button>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Free mode stays complete. Pro is reserved for continuity and premium depth.
+        </p>
       </div>
     );
   }

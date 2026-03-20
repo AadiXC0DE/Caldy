@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CalendarPlus, ListPlus, Plus } from 'lucide-react';
+import { CalendarPlus, Flame, ListPlus, NotebookPen, Plus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,18 @@ export function AddNew() {
           <DropdownMenuItem onClick={() => setIsAddTaskOpen(true)}>
             <ListPlus className="h-4 w-4 mr-2" />
             New Task
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/notes?new=note">
+              <NotebookPen className="h-4 w-4 mr-2" />
+              New Note
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/habits?new=habit">
+              <Flame className="h-4 w-4 mr-2" />
+              New Habit
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
