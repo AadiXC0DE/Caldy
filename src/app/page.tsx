@@ -142,6 +142,20 @@ const CustomCursor = memo(({ cursorXSpring, cursorYSpring }: CursorProps) => {
 });
 CustomCursor.displayName = 'CustomCursor';
 
+const GridBackgroundIcon = () => {
+  return (
+    <div className="relative w-6 h-6 flex items-center justify-center">
+      <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5 opacity-40">
+        <div className="bg-primary rounded-[1px]"></div>
+        <div className="bg-primary rounded-[1px] opacity-60"></div>
+        <div className="bg-primary rounded-[1px] opacity-60"></div>
+        <div className="bg-primary rounded-[1px] opacity-30"></div>
+      </div>
+    </div>
+  );
+};
+GridBackgroundIcon.displayName = 'GridBackgroundIcon';
+
 const GradientFollower = memo(({ mousePosition }: GradientFollowerProps) => {
   return (
     <div
