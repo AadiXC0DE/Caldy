@@ -1,0 +1,187 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useApp } from '@/contexts/AppContext';
+import { Calendar as CalendarIcon, PlusCircle, Grid3X3, Columns, LayoutList } from 'lucide-react';
+import { motion } from 'framer-motion';
+import CalendarView from '@/components/calendar/CalendarView';
+import AddEventDialog from '@/components/calendar/AddEventDialog';
+
+function CalendarPageClient() {
+  const { view, setView } = useApp();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [defaultDate, setDefaultDate] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
+  const quickCreateHandledRef = useRef(false);
+  const quickCaptureTitle = searchParams.get('title') || '';
+  const quickCaptureDescription = searchParams.get('description') || '';
+  const quickCaptureSource = searchParams.get('source');
+  const newItem = searchParams.get('new');
+  const dateParam = searchParams.get('date');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (dateParam) {
+      const parsedDate = new Date(dateParam);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        setDefaultDate(parsedDate);
+      }
+    }
+  }, [dateParam]);
+
+  useEffect(() => {
+    if (newItem === 'event' && !quickCreateHandledRef.current) {
+      quickCreateHandledRef.current = true;
+      setIsAddEventOpen(true);
+      router.replace(dateParam ? `/calendar?date=${dateParam}` : '/calendar');
+      return;
+    }
+
+    if (newItem !== 'event') {
+      quickCreateHandledRef.current = false;
+    }
+  }, [dateParam, newItem, router]);
+
+  const handleChangeView = useCallback(
+    (newView: 'month' | 'week' | 'day' | 'list') => {
+      setView(newView);
+    },
+    [setView],
+  );
+
+  const handleAddEventOpen = useCallback(() => {
+    setIsAddEventOpen(true);
+  }, []);
+
+  const viewToggleButtons = useMemo(() => {
+    if (!mounted) {
+      return <div className="h-10 w-[300px] bg-background/80 rounded-lg border"></div>;
+    }
+
+    return (
+      <div className="bg-background border rounded-lg p-1 flex flex-wrap items-center w-full md:w-auto">
+        <Button
+          variant={view === 'month' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleChangeView('month')}
+          className="rounded-md"
+        >
+          <Grid3X3 className="h-4 w-4 mr-1" />
+          Month
+        </Button>
+        <Button
+          variant={view === 'week' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleChangeView('week')}
+          className="rounded-md"
+        >
+          <Columns className="h-4 w-4 mr-1" />
+          Week
+        </Button>
+        <Button
+          variant={view === 'day' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleChangeView('day')}
+          className="rounded-md"
+        >
+          <CalendarIcon className="h-4 w-4 mr-1" />
+          Day
+        </Button>
+        <Button
+          variant={view === 'list' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => handleChangeView('list')}
+          className="rounded-md"
+        >
+          <LayoutList className="h-4 w-4 mr-1" />
+          List
+        </Button>
+      </div>
+    );
+  }, [mounted, view, handleChangeView]);
+
+  const headerSection = useMemo(
+    () => (
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center">
+              <CalendarIcon className="h-8 w-8 mr-2 text-primary" />
+              Your Calendar
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {quickCaptureSource === 'task'
+                ? 'Quick scheduling a task into your calendar.'
+                : 'Manage your schedule and events'}
+            </p>
+          </div>
+
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full md:w-auto">
+            {viewToggleButtons}
+
+            <Button onClick={handleAddEventOpen} className="w-full md:w-auto h-9">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Event
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    ),
+    [viewToggleButtons, handleAddEventOpen, quickCaptureSource],
+  );
+
+  const calendarSection = useMemo(
+    () => (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="w-full"
+      >
+        <Card>
+          <CardContent className="p-0 sm:p-1 md:p-2 lg:p-3 h-[calc(100vh-15rem)]">
+            {mounted && <CalendarView showHeader={true} />}
+          </CardContent>
+        </Card>
+      </motion.div>
+    ),
+    [mounted],
+  );
+
+  return (
+    <div className="space-y-4">
+      {headerSection}
+      {calendarSection}
+
+      <AddEventDialog
+        open={isAddEventOpen}
+        onOpenChange={setIsAddEventOpen}
+        defaultDate={defaultDate}
+        initialValues={{
+          title: quickCaptureTitle,
+          description: quickCaptureDescription,
+        }}
+      />
+    </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div>Loading calendar...</div>}>
+      <CalendarPageClient />
+    </Suspense>
+  );
+}

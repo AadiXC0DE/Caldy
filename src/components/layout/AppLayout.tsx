@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Navbar } from './Navbar';
-import { Toaster } from '@/components/ui/sonner';
-import { AppProvider } from '@/contexts/AppContext';
 import { motion } from 'framer-motion';
+import { Sidebar } from './Sidebar';
+import { Navbar } from './Navbar';
+import { FloatingActionButton } from '@/components/common/FloatingActionButton';
+import { KeyboardShortcuts } from '@/components/common/KeyboardShortcuts';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -12,21 +13,27 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <AppProvider>
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <div className="hidden h-full md:block">
+        <Sidebar />
+      </div>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 container mx-auto px-4 py-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="h-full"
+            transition={{ duration: 0.25 }}
+            className="mx-auto w-full max-w-7xl"
           >
             {children}
           </motion.div>
         </main>
-        <Toaster />
       </div>
-    </AppProvider>
+
+      <FloatingActionButton />
+      <KeyboardShortcuts />
+    </div>
   );
-} 
+}

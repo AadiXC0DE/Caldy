@@ -10,10 +10,7 @@ interface ColorPickerProps {
 export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div 
-        className="w-8 h-8 rounded-full border"
-        style={{ backgroundColor: value }}
-      />
+      <div className="w-8 h-8 rounded-full border" style={{ backgroundColor: value }} />
       <Input
         type="color"
         value={value}
@@ -22,4 +19,4 @@ export function ColorPicker({ value, onChange, className }: ColorPickerProps) {
       />
     </div>
   );
-} 
+}

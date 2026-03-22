@@ -1,336 +1,276 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Calendar, CheckSquare, Sparkles, X } from 'lucide-react';
+import {
+  Bell,
+  Calendar,
+  CheckSquare,
+  Command,
+  FileText,
+  Flame,
+  Layers3,
+  Search,
+  Sparkles,
+  StickyNote,
+} from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
-import { format } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Input } from '@/components/ui/input';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Event, Task } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
 
-// Type for search results
-type SearchResult = {
-  id: string;
-  title: string;
-  type: 'event' | 'task' | 'festival';
-  date?: Date;
-  description?: string;
-  url: string;
+const OPEN_EVENT = 'caldy:open-command-palette';
+
+const TYPE_META = {
+  event: { label: 'Event', icon: Calendar },
+  'imported-event': { label: 'Imported', icon: Calendar },
+  task: { label: 'Task', icon: CheckSquare },
+  festival: { label: 'Holiday', icon: Sparkles },
+  note: { label: 'Note', icon: StickyNote },
+  habit: { label: 'Habit', icon: Flame },
+  'task-view': { label: 'View', icon: Layers3 },
+  'calendar-source': { label: 'Calendar', icon: Bell },
+  'mail-thread': { label: 'Inbox', icon: FileText },
+  command: { label: 'Command', icon: Command },
+} as const;
+
+const GROUPS = [
+  { key: 'command', title: 'Actions' },
+  { key: 'task', title: 'Tasks' },
+  { key: 'event', title: 'Calendar' },
+  { key: 'imported-event', title: 'Imported Calendars' },
+  { key: 'note', title: 'Notes' },
+  { key: 'habit', title: 'Habits' },
+  { key: 'task-view', title: 'Saved Views' },
+  { key: 'calendar-source', title: 'Calendar Sources' },
+] as const;
+
+const TYPE_ORDER: Record<string, number> = {
+  command: 0,
+  task: 1,
+  event: 2,
+  note: 3,
+  habit: 4,
+  'task-view': 5,
+  'imported-event': 6,
+  'calendar-source': 7,
+  festival: 8,
+  'mail-thread': 9,
 };
 
+function sanitizePreview(value?: string | null) {
+  if (!value) return '';
+
+  return value
+    .replace(/\[\[([^[\]]+)\]\]/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/[*_~`>|-]/g, ' ')
+    .replace(/\[(x| )\]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildPreview(value?: string | null) {
+  return sanitizePreview(value).slice(0, 140);
+}
+
 export function SearchBar() {
-  const { events, tasks, festivals, icalEvents } = useApp();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { searchDocuments } = useApp();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
-  // Close the search dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    const openPalette = () => setOpen(true);
+    window.addEventListener(OPEN_EVENT, openPalette);
+    return () => window.removeEventListener(OPEN_EVENT, openPalette);
   }, []);
 
-  // Search function with improved relevance algorithm
-  const performSearch = useCallback((query: string) => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
+  const results = useMemo(() => {
+    if (!deferredQuery) {
+      return [...searchDocuments]
+        .sort((left, right) => {
+          const priorityDelta = (TYPE_ORDER[left.type] ?? 99) - (TYPE_ORDER[right.type] ?? 99);
+          if (priorityDelta !== 0) return priorityDelta;
+          return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+        })
+        .slice(0, 18);
     }
 
-    const normalizedQuery = query.toLowerCase().trim();
-    
-    // For single character searches, require exact word beginnings to reduce noise
-    const isSingleChar = normalizedQuery.length === 1;
-    
-    // Calculate relevance score for an item
-    const getRelevanceScore = (title: string, description?: string): number => {
-      const normalizedTitle = title.toLowerCase();
-      const normalizedDesc = description?.toLowerCase() || '';
-      
-      // Split query into words for better matching
-      const queryWords = normalizedQuery.split(/\s+/);
-      
-      let score = 0;
-      
-      // Check for word beginnings in title (highest relevance)
-      const titleWords = normalizedTitle.split(/\s+/);
-      for (const titleWord of titleWords) {
-        for (const queryWord of queryWords) {
-          // Exact word match
-          if (titleWord === queryWord) {
-            score += 10;
-          }
-          // Word beginning match
-          else if (titleWord.startsWith(queryWord)) {
-            score += 5;
-          }
-          // Contains match (lowest score)
-          else if (titleWord.includes(queryWord) && !isSingleChar) {
-            score += 2;
-          }
-        }
-      }
-      
-      // Check for matches in description (lower relevance)
-      if (normalizedDesc) {
-        const descWords = normalizedDesc.split(/\s+/);
-        for (const descWord of descWords) {
-          for (const queryWord of queryWords) {
-            if (descWord === queryWord) {
-              score += 3;
-            }
-            else if (descWord.startsWith(queryWord)) {
-              score += 2;
-            }
-            else if (descWord.includes(queryWord) && !isSingleChar) {
-              score += 1;
-            }
-          }
-        }
-      }
-      
-      // If it's a single character search and we have no significant matches, return 0
-      if (isSingleChar && score < 5) {
-        return 0;
-      }
-      
-      return score;
-    };
+    const terms = deferredQuery.split(/\s+/).filter(Boolean);
 
-    // Search through regular events
-    const eventResults = events
-      .map((event: Event) => ({
-        id: event.id,
-        title: event.title,
-        type: 'event' as const,
-        date: new Date(event.start),
-        description: event.description,
-        url: `/calendar?event=${event.id}`,
-        score: getRelevanceScore(event.title, event.description)
-      }))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score);
+    return searchDocuments
+      .map((document) => {
+        const haystack = [
+          document.title,
+          document.body || '',
+          document.section || '',
+          ...(document.keywords || []),
+        ]
+          .join(' ')
+          .toLowerCase();
 
-    // Search through iCal events
-    const icalEventResults = icalEvents
-      .map((event: Event) => ({
-        id: event.id,
-        title: event.title,
-        type: 'event' as const,
-        date: new Date(event.start),
-        description: event.description,
-        url: `/calendar?event=${event.id}`,
-        score: getRelevanceScore(event.title, event.description)
-      }))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score);
+        const score = terms.reduce((total, term) => {
+          if (document.title.toLowerCase().startsWith(term)) return total + 8;
+          if (document.title.toLowerCase().includes(term)) return total + 5;
+          if ((document.section || '').toLowerCase().includes(term)) return total + 3;
+          if (haystack.includes(term)) return total + 2;
+          return total;
+        }, 0);
 
-    // Search through tasks
-    const taskResults = tasks
-      .map((task: Task) => ({
-        id: task.id,
-        title: task.title,
-        type: 'task' as const,
-        date: task.dueDate ? new Date(task.dueDate) : undefined,
-        description: task.description,
-        url: `/tasks?task=${task.id}`,
-        score: getRelevanceScore(task.title, task.description)
-      }))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score);
+        return { document, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => {
+        if (right.score !== left.score) return right.score - left.score;
+        return (
+          new Date(right.document.updatedAt).getTime() - new Date(left.document.updatedAt).getTime()
+        );
+      })
+      .slice(0, 24)
+      .map((entry) => entry.document);
+  }, [deferredQuery, searchDocuments]);
 
-    // Search through festivals
-    const festivalResults = festivals
-      .map((festival) => ({
-        id: festival.id,
-        title: festival.title,
-        type: 'festival' as const,
-        date: new Date(festival.start),
-        description: festival.description,
-        url: `/calendar?festival=${festival.id}`,
-        score: getRelevanceScore(festival.title, festival.description)
-      }))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score);
+  const groupedResults = useMemo(
+    () =>
+      GROUPS.map((group) => ({
+        ...group,
+        items: results.filter((document) => document.type === group.key).slice(0, 6),
+      })).filter((group) => group.items.length > 0),
+    [results],
+  );
 
-    // Combine results, sort by score, then limit to 10 results
-    const scoredResults = [...eventResults, ...icalEventResults, ...taskResults, ...festivalResults]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-      
-    // Remove score property before setting results
-    setResults(scoredResults.map(({ ...rest }) => rest));
-  }, [events, tasks, festivals, icalEvents]);
+  const totalResultCount = results.length;
+  const resultLabel = deferredQuery
+    ? `${totalResultCount} result${totalResultCount === 1 ? '' : 's'}`
+    : 'Jump back in quickly';
 
-  // Handle search input change
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    setIsOpen(true);
-    performSearch(query);
-    setFocusedIndex(-1);
-  };
-
-  // Clear search
-  const clearSearch = () => {
-    setSearchQuery('');
-    setResults([]);
-    setIsOpen(false);
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedIndex(prev => (prev < results.length - 1 ? prev + 1 : prev));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedIndex(prev => (prev > 0 ? prev - 1 : prev));
-    } else if (e.key === 'Enter' && focusedIndex >= 0) {
-      e.preventDefault();
-      const selectedResult = results[focusedIndex];
-      if (selectedResult) {
-        handleResultClick(selectedResult);
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setIsOpen(false);
-    }
-  };
-
-  // Navigate to the correct page when clicking on a result
-  const handleResultClick = (result: SearchResult) => {
-    // Different handling based on result type
-    if (result.type === 'event' || result.type === 'festival') {
-      // For events and festivals, navigate to calendar and include the date
-      const dateParam = result.date ? 
-        `&date=${result.date.toISOString().split('T')[0]}` : 
-        '';
-        
-      // Navigate to calendar with both item ID and date parameters
-      router.push(`/calendar?${result.type}=${result.id}${dateParam}`);
-    } 
-    else if (result.type === 'task') {
-      // For tasks, navigate to tasks page with the task ID
-      router.push(`/tasks?task=${result.id}`);
-    }
-    
-    // Close the search interface
-    setIsOpen(false);
-    setSearchQuery('');
-    setResults([]);
-  };
-
-  // Get icon based on result type
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'event':
-        return <Calendar className="h-4 w-4 mr-2 text-primary" />;
-      case 'task':
-        return <CheckSquare className="h-4 w-4 mr-2 text-primary" />;
-      case 'festival':
-        return <Sparkles className="h-4 w-4 mr-2 text-primary" />;
-      default:
-        return null;
-    }
-  };
-
-  // Focus the input when the search button is clicked
-  const handleSearchFocus = () => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-      setIsOpen(true);
-    }
+  const handleSelect = (url: string) => {
+    startTransition(() => {
+      router.push(url);
+      setOpen(false);
+      setQuery('');
+    });
   };
 
   return (
-    <div className="relative" ref={searchRef}>
-      <div className="flex items-center rounded-full border w-full sm:w-[300px] lg:w-[280px] hover:border-primary/50 transition-colors">
-        <Search 
-          className="h-4 w-4 ml-3 text-muted-foreground " 
-          onClick={handleSearchFocus}
-        />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          onKeyDown={handleKeyDown}
-          onClick={() => setIsOpen(true)}
-          placeholder="Search events, tasks, holidays..."
-          className="border-0 focus-visible:ring-0 bg-transparent! focus-visible:ring-offset-0 h-9 text-sm"
-        />
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 mr-1 hover:bg-muted rounded-full"
-            onClick={clearSearch}
-          >
-            <X className="h-4 w-4 text-muted-foreground dark:text-white" />
-            <span className="sr-only">Clear search</span>
-          </Button>
-        )}
-      </div>
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className="h-10 w-full justify-between rounded-2xl border-border/70 bg-card/80 px-3 text-sm text-muted-foreground shadow-sm transition hover:border-border hover:bg-card md:min-w-[260px]"
+      >
+        <span className="flex items-center gap-2">
+          <Search className="h-4 w-4" />
+          Search everything
+        </span>
+        <span className="hidden items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground/70 sm:inline-flex">
+          <Command className="h-3 w-3" />K
+        </span>
+      </Button>
 
-      <AnimatePresence>
-        {isOpen && results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-50 max-h-[60vh] overflow-y-auto w-full sm:w-[320px] md:w-[350px]"
-          >
-            {results.map((result, index) => (
-              <div
-                key={`${result.type}-${result.id}`}
-                className={cn(
-                  "px-3 py-2 cursor-pointer hover:bg-muted flex items-start",
-                  focusedIndex === index && "bg-muted"
-                )}
-                onClick={() => handleResultClick(result)}
+      <CommandDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Search everything"
+        description="Search across tasks, notes, calendars, habits, and product actions."
+        contentClassName="max-w-[min(760px,calc(100vw-1.5rem))] overflow-hidden rounded-[24px] border border-border/80 bg-background/95 p-0 shadow-[0_28px_90px_-42px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+      >
+        <CommandInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search tasks, notes, calendar links, habits, and actions"
+          wrapperClassName="h-14 border-b border-border/70 bg-background/95 px-4"
+          className="h-12 text-base tracking-[-0.01em] placeholder:text-muted-foreground/70"
+        />
+
+        <div className="border-b border-border/60 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground/80">
+          {resultLabel}
+        </div>
+
+        <CommandList className="max-h-[68vh] px-3 py-3">
+          <CommandEmpty className="py-12 text-center text-sm text-muted-foreground">
+            No matches for this query.
+          </CommandEmpty>
+          {groupedResults.map((group, groupIndex) => (
+            <React.Fragment key={group.key}>
+              {groupIndex > 0 && <CommandSeparator className="my-3" />}
+              <CommandGroup
+                heading={group.title}
+                className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.18em] [&_[cmdk-group-heading]]:text-muted-foreground/80"
               >
-                <div className="flex-shrink-0 mt-1">{getIcon(result.type)}</div>
-                <div className="flex-grow min-w-0">
-                  <div className="font-medium text-sm truncate">{result.title}</div>
-                  {result.date && (
-                    <div className="text-xs text-muted-foreground">
-                      {format(result.date, 'PP')}
-                    </div>
-                  )}
-                  {result.description && (
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {result.description}
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  {group.items.map((item) => {
+                    const meta = TYPE_META[item.type] || { label: 'Item', icon: FileText };
+                    const Icon = meta.icon;
+                    const preview = buildPreview(item.body);
+
+                    return (
+                      <CommandItem
+                        key={item.id}
+                        value={`${item.title} ${item.body || ''} ${(item.keywords || []).join(' ')}`}
+                        onSelect={() => handleSelect(item.url)}
+                        className="group rounded-2xl border border-transparent px-3 py-3 transition-colors hover:bg-card/55 data-[selected=true]:border-border/70 data-[selected=true]:bg-card/70"
+                      >
+                        <div className="flex w-full items-start gap-3">
+                          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-foreground/80">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate text-sm font-medium text-foreground">
+                                {item.title}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="rounded-full border-border/70 bg-transparent px-2 py-0 text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
+                              >
+                                {meta.label}
+                              </Badge>
+                            </div>
+                            {preview ? (
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                                {preview}
+                              </p>
+                            ) : null}
+                            {item.section ? (
+                              <p className="mt-1.5 text-[11px] text-muted-foreground/80">
+                                {item.section}
+                              </p>
+                            ) : null}
+                          </div>
+                          {item.type === 'command' ? (
+                            <CommandShortcut className="rounded-full border border-border/70 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                              Run
+                            </CommandShortcut>
+                          ) : null}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
                 </div>
-                <div className="ml-2 text-xs text-muted-foreground capitalize shrink-0">
-                  {result.type}
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              </CommandGroup>
+            </React.Fragment>
+          ))}
+        </CommandList>
+      </CommandDialog>
+    </>
   );
-} 
+}
+
+export function openCommandPalette() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}

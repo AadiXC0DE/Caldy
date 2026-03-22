@@ -3,15 +3,15 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -35,11 +35,9 @@ const DAYS_OF_WEEK = [
   { value: '6', label: 'Saturday' },
 ];
 
-export function RecurringEventSettings({ 
-  form, 
-}: RecurringTaskSettingsProps) {
+export function RecurringEventSettings({ form }: RecurringTaskSettingsProps) {
   const frequency = form.watch('recurring.frequency');
-  
+
   return (
     <div className="space-y-4 p-4 border rounded-md bg-muted/20">
       <div className="grid grid-cols-2 gap-4">
@@ -49,10 +47,7 @@ export function RecurringEventSettings({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Frequency</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select frequency" />
@@ -69,7 +64,7 @@ export function RecurringEventSettings({
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="recurring.interval"
@@ -98,7 +93,7 @@ export function RecurringEventSettings({
           )}
         />
       </div>
-      
+
       {frequency === 'weekly' && (
         <FormField
           control={form.control}
@@ -118,14 +113,11 @@ export function RecurringEventSettings({
                         if (checked) {
                           field.onChange([...currentValues, dayValue].sort());
                         } else {
-                          field.onChange(currentValues.filter(v => v !== dayValue));
+                          field.onChange(currentValues.filter((v) => v !== dayValue));
                         }
                       }}
                     />
-                    <label
-                      htmlFor={`day-${day.value}`}
-                      className="text-sm cursor-pointer"
-                    >
+                    <label htmlFor={`day-${day.value}`} className="text-sm cursor-pointer">
                       {day.label.substring(0, 3)}
                     </label>
                   </div>
@@ -136,7 +128,7 @@ export function RecurringEventSettings({
           )}
         />
       )}
-      
+
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={form.control}
@@ -150,15 +142,11 @@ export function RecurringEventSettings({
                     <Button
                       variant="outline"
                       className={`pl-3 text-left font-normal ${
-                        !field.value && "text-muted-foreground"
+                        !field.value && 'text-muted-foreground'
                       }`}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>No end date</span>
-                      )}
+                      {field.value ? format(field.value, 'PPP') : <span>No end date</span>}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
@@ -175,7 +163,7 @@ export function RecurringEventSettings({
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="recurring.occurrences"
@@ -201,4 +189,4 @@ export function RecurringEventSettings({
       </div>
     </div>
   );
-} 
+}

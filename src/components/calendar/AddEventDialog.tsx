@@ -5,7 +5,16 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format, addHours } from 'date-fns';
-import { Calendar as CalendarIcon, Clock, MapPin, Repeat, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  Repeat,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Palette,
+} from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { Event } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,10 +41,16 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Label } from "@/components/ui/label";
+import { Label } from '@/components/ui/label';
 import { RecurringEventSettings } from './RecurringEventSettings';
 import { RecurringEditDialog } from './RecurringEditDialog';
 
@@ -48,13 +63,16 @@ const formSchema = z.object({
   allDay: z.boolean().default(false),
   categoryId: z.string().optional(),
   color: z.string().optional(),
-  recurring: z.object({
-    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
-    interval: z.number().min(1).default(1),
-    endDate: z.date().optional().nullable(),
-    occurrences: z.number().optional().nullable(),
-    daysOfWeek: z.array(z.number()).optional(),
-  }).optional().nullable(),
+  recurring: z
+    .object({
+      frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+      interval: z.number().min(1).default(1),
+      endDate: z.date().optional().nullable(),
+      occurrences: z.number().optional().nullable(),
+      daysOfWeek: z.array(z.number()).optional(),
+    })
+    .optional()
+    .nullable(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -66,16 +84,25 @@ interface AddEventDialogProps {
   defaultDate?: Date;
   editEvent?: Event;
   occurrenceDate?: string; // ISO date string for editing specific recurring instance
+  initialValues?: Partial<Pick<FormValues, 'title' | 'description' | 'location' | 'allDay'>>;
 }
 
-export default function AddEventDialog({ 
-  open, 
-  onOpenChange, 
+export default function AddEventDialog({
+  open,
+  onOpenChange,
   defaultDate = new Date(),
   editEvent,
   occurrenceDate,
+  initialValues,
 }: AddEventDialogProps) {
-  const { addEvent, updateEvent, deleteEvent, updateRecurringEventInstance, deleteRecurringEventInstance, categories} = useApp();
+  const {
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    updateRecurringEventInstance,
+    deleteRecurringEventInstance,
+    categories,
+  } = useApp();
   const [showRecurring, setShowRecurring] = useState(false);
   const [showRecurringSaveDialog, setShowRecurringSaveDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<FormValues | null>(null);
@@ -83,15 +110,18 @@ export default function AddEventDialog({
   // If editing a specific occurrence, get the exception data
   const getOccurrenceData = () => {
     if (!editEvent || !occurrenceDate) return null;
-    
-    const exception = editEvent.recurring?.exceptions?.find(ex => ex.date === occurrenceDate);
+
+    const exception = editEvent.recurring?.exceptions?.find((ex) => ex.date === occurrenceDate);
     return exception;
   };
 
   // Calculate the actual start and end dates for this occurrence
   const getOccurrenceDates = () => {
     if (!editEvent || !occurrenceDate) {
-      return { start: editEvent?.start || defaultDate, end: editEvent?.end || addHours(defaultDate, 1) };
+      return {
+        start: editEvent?.start || defaultDate,
+        end: editEvent?.end || addHours(defaultDate, 1),
+      };
     }
 
     // If there's an exception with custom dates, use those
@@ -107,13 +137,19 @@ export default function AddEventDialog({
 
     // Create new dates with the occurrence date but original times
     const start = new Date(occurrenceDateObj);
-    start.setHours(originalStart.getHours(), originalStart.getMinutes(), originalStart.getSeconds());
+    start.setHours(
+      originalStart.getHours(),
+      originalStart.getMinutes(),
+      originalStart.getSeconds(),
+    );
 
     const end = new Date(occurrenceDateObj);
     end.setHours(originalEnd.getHours(), originalEnd.getMinutes(), originalEnd.getSeconds());
 
     // If the event spans multiple days, adjust the end date
-    const daysDiff = Math.floor((originalEnd.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.floor(
+      (originalEnd.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24),
+    );
     if (daysDiff > 0) {
       end.setDate(end.getDate() + daysDiff);
     }
@@ -143,33 +179,35 @@ export default function AddEventDialog({
   // Reset form when dialog opens or event changes
   useEffect(() => {
     if (open) {
-      const resetValues: FormValues = editEvent ? {
-        title: occurrenceException?.title ?? editEvent.title,
-        description: (occurrenceException?.description ?? editEvent.description) || '',
-        location: (occurrenceException?.location ?? editEvent.location) || '',
-        startDate: occurrenceStart,
-        endDate: occurrenceEnd,
-        allDay: editEvent.allDay || false,
-        categoryId: occurrenceException?.categoryId ?? editEvent.categoryId,
-        color: occurrenceException?.color ?? editEvent.color,
-        recurring: occurrenceDate ? null : (editEvent.recurring || null),
-        tags: editEvent.tags || [],
-      } : {
-        title: '',
-        description: '',
-        location: '',
-        startDate: defaultDate,
-        endDate: addHours(defaultDate, 1),
-        allDay: false,
-        categoryId: undefined,
-        color: undefined,
-        recurring: null,
-        tags: [],
-      };
+      const resetValues: FormValues = editEvent
+        ? {
+            title: occurrenceException?.title ?? editEvent.title,
+            description: (occurrenceException?.description ?? editEvent.description) || '',
+            location: (occurrenceException?.location ?? editEvent.location) || '',
+            startDate: occurrenceStart,
+            endDate: occurrenceEnd,
+            allDay: editEvent.allDay || false,
+            categoryId: occurrenceException?.categoryId ?? editEvent.categoryId,
+            color: occurrenceException?.color ?? editEvent.color,
+            recurring: occurrenceDate ? null : editEvent.recurring || null,
+            tags: editEvent.tags || [],
+          }
+        : {
+            title: initialValues?.title || '',
+            description: initialValues?.description || '',
+            location: initialValues?.location || '',
+            startDate: defaultDate,
+            endDate: addHours(defaultDate, 1),
+            allDay: initialValues?.allDay ?? false,
+            categoryId: undefined,
+            color: undefined,
+            recurring: null,
+            tags: [],
+          };
       form.reset(resetValues);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editEvent, occurrenceDate]);
+  }, [open, editEvent, occurrenceDate, defaultDate, initialValues]);
 
   const watchAllDay = form.watch('allDay');
   const watchRecurring = form.watch('recurring');
@@ -332,7 +370,10 @@ export default function AddEventDialog({
                             >
                               <CalendarIcon className="min-w-4 h-4 mr-2" />
                               <span className="truncate">
-                                {format(field.value, window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP')}
+                                {format(
+                                  field.value,
+                                  window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP',
+                                )}
                               </span>
                             </Button>
                           </PopoverTrigger>
@@ -346,7 +387,7 @@ export default function AddEventDialog({
                           </PopoverContent>
                         </Popover>
                       </FormControl>
-                      
+
                       {/* Time selection - Redesigned with better theme consistency and improved spacing */}
                       {!watchAllDay && (
                         <div className="flex gap-2">
@@ -373,7 +414,8 @@ export default function AddEventDialog({
                                         className="h-8 w-8 rounded-r-none"
                                         onClick={() => {
                                           const newDate = new Date(field.value);
-                                          const hour = newDate.getHours() === 0 ? 23 : newDate.getHours() - 1;
+                                          const hour =
+                                            newDate.getHours() === 0 ? 23 : newDate.getHours() - 1;
                                           newDate.setHours(hour);
                                           field.onChange(newDate);
                                         }}
@@ -386,11 +428,12 @@ export default function AddEventDialog({
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon" 
+                                        size="icon"
                                         className="h-8 w-8 rounded-l-none"
                                         onClick={() => {
                                           const newDate = new Date(field.value);
-                                          const hour = newDate.getHours() === 23 ? 0 : newDate.getHours() + 1;
+                                          const hour =
+                                            newDate.getHours() === 23 ? 0 : newDate.getHours() + 1;
                                           newDate.setHours(hour);
                                           field.onChange(newDate);
                                         }}
@@ -399,7 +442,7 @@ export default function AddEventDialog({
                                       </Button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex justify-between items-center gap-4">
                                     <Label className="min-w-16">Minutes</Label>
                                     <div className="flex items-center border rounded-md">
@@ -411,7 +454,8 @@ export default function AddEventDialog({
                                         onClick={() => {
                                           const newDate = new Date(field.value);
                                           const min = newDate.getMinutes();
-                                          const newMin = min < 15 ? 45 : min < 30 ? 0 : min < 45 ? 15 : 30;
+                                          const newMin =
+                                            min < 15 ? 45 : min < 30 ? 0 : min < 45 ? 15 : 30;
                                           newDate.setMinutes(newMin);
                                           field.onChange(newDate);
                                         }}
@@ -429,7 +473,8 @@ export default function AddEventDialog({
                                         onClick={() => {
                                           const newDate = new Date(field.value);
                                           const min = newDate.getMinutes();
-                                          const newMin = min < 15 ? 15 : min < 30 ? 30 : min < 45 ? 45 : 0;
+                                          const newMin =
+                                            min < 15 ? 15 : min < 30 ? 30 : min < 45 ? 45 : 0;
                                           newDate.setMinutes(newMin);
                                           field.onChange(newDate);
                                         }}
@@ -438,13 +483,15 @@ export default function AddEventDialog({
                                       </Button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex justify-between items-center gap-4">
                                     <Label className="min-w-16">AM/PM</Label>
                                     <div className="flex">
                                       <Button
                                         type="button"
-                                        variant={format(field.value, 'a') === 'AM' ? 'default' : 'outline'}
+                                        variant={
+                                          format(field.value, 'a') === 'AM' ? 'default' : 'outline'
+                                        }
                                         size="sm"
                                         className="rounded-r-none px-3"
                                         onClick={() => {
@@ -460,7 +507,9 @@ export default function AddEventDialog({
                                       </Button>
                                       <Button
                                         type="button"
-                                        variant={format(field.value, 'a') === 'PM' ? 'default' : 'outline'}
+                                        variant={
+                                          format(field.value, 'a') === 'PM' ? 'default' : 'outline'
+                                        }
                                         size="sm"
                                         className="rounded-l-none px-3"
                                         onClick={() => {
@@ -504,7 +553,10 @@ export default function AddEventDialog({
                             >
                               <CalendarIcon className="min-w-4 h-4 mr-2" />
                               <span className="truncate">
-                                {format(field.value, window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP')}
+                                {format(
+                                  field.value,
+                                  window.innerWidth < 640 ? 'MMM d, yyyy' : 'PPP',
+                                )}
                               </span>
                             </Button>
                           </PopoverTrigger>
@@ -518,7 +570,7 @@ export default function AddEventDialog({
                                   const newDate = new Date(date);
                                   newDate.setHours(
                                     field.value.getHours(),
-                                    field.value.getMinutes()
+                                    field.value.getMinutes(),
                                   );
                                   field.onChange(newDate);
                                 }
@@ -528,7 +580,7 @@ export default function AddEventDialog({
                           </PopoverContent>
                         </Popover>
                       </FormControl>
-                      
+
                       {/* Time selection - Redesigned with better theme consistency and improved spacing */}
                       {!watchAllDay && (
                         <div className="flex gap-2">
@@ -555,7 +607,8 @@ export default function AddEventDialog({
                                         className="h-8 w-8 rounded-r-none"
                                         onClick={() => {
                                           const newDate = new Date(field.value);
-                                          const hour = newDate.getHours() === 0 ? 23 : newDate.getHours() - 1;
+                                          const hour =
+                                            newDate.getHours() === 0 ? 23 : newDate.getHours() - 1;
                                           newDate.setHours(hour);
                                           field.onChange(newDate);
                                         }}
@@ -568,11 +621,12 @@ export default function AddEventDialog({
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="icon" 
+                                        size="icon"
                                         className="h-8 w-8 rounded-l-none"
                                         onClick={() => {
                                           const newDate = new Date(field.value);
-                                          const hour = newDate.getHours() === 23 ? 0 : newDate.getHours() + 1;
+                                          const hour =
+                                            newDate.getHours() === 23 ? 0 : newDate.getHours() + 1;
                                           newDate.setHours(hour);
                                           field.onChange(newDate);
                                         }}
@@ -581,7 +635,7 @@ export default function AddEventDialog({
                                       </Button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex justify-between items-center gap-4">
                                     <Label className="min-w-16">Minutes</Label>
                                     <div className="flex items-center border rounded-md">
@@ -593,7 +647,8 @@ export default function AddEventDialog({
                                         onClick={() => {
                                           const newDate = new Date(field.value);
                                           const min = newDate.getMinutes();
-                                          const newMin = min < 15 ? 45 : min < 30 ? 0 : min < 45 ? 15 : 30;
+                                          const newMin =
+                                            min < 15 ? 45 : min < 30 ? 0 : min < 45 ? 15 : 30;
                                           newDate.setMinutes(newMin);
                                           field.onChange(newDate);
                                         }}
@@ -611,7 +666,8 @@ export default function AddEventDialog({
                                         onClick={() => {
                                           const newDate = new Date(field.value);
                                           const min = newDate.getMinutes();
-                                          const newMin = min < 15 ? 15 : min < 30 ? 30 : min < 45 ? 45 : 0;
+                                          const newMin =
+                                            min < 15 ? 15 : min < 30 ? 30 : min < 45 ? 45 : 0;
                                           newDate.setMinutes(newMin);
                                           field.onChange(newDate);
                                         }}
@@ -620,13 +676,15 @@ export default function AddEventDialog({
                                       </Button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex justify-between items-center gap-4">
                                     <Label className="min-w-16">AM/PM</Label>
                                     <div className="flex">
                                       <Button
                                         type="button"
-                                        variant={format(field.value, 'a') === 'AM' ? 'default' : 'outline'}
+                                        variant={
+                                          format(field.value, 'a') === 'AM' ? 'default' : 'outline'
+                                        }
                                         size="sm"
                                         className="rounded-r-none px-3"
                                         onClick={() => {
@@ -642,7 +700,9 @@ export default function AddEventDialog({
                                       </Button>
                                       <Button
                                         type="button"
-                                        variant={format(field.value, 'a') === 'PM' ? 'default' : 'outline'}
+                                        variant={
+                                          format(field.value, 'a') === 'PM' ? 'default' : 'outline'
+                                        }
                                         size="sm"
                                         className="rounded-l-none px-3"
                                         onClick={() => {
@@ -680,10 +740,7 @@ export default function AddEventDialog({
                     <FormLabel>All Day Event</FormLabel>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
                 </FormItem>
               )}
@@ -703,20 +760,65 @@ export default function AddEventDialog({
                     </FormControl>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem 
-                          key={category.id} 
+                        <SelectItem
+                          key={category.id}
                           value={category.id}
                           className="flex items-center"
                         >
-                          <div 
-                            className="w-3 h-3 rounded-full mr-2" 
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
                             style={{ backgroundColor: category.color }}
-                          />
+                          ></div>
                           {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Event Color Picker */}
+            <FormField
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    <Palette className="w-4 h-4 mr-1" />
+                    Event Color
+                  </FormLabel>
+                  <FormControl>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { name: 'Default', value: '' },
+                        { name: 'Red', value: '#ef4444' },
+                        { name: 'Orange', value: '#f97316' },
+                        { name: 'Amber', value: '#f59e0b' },
+                        { name: 'Green', value: '#22c55e' },
+                        { name: 'Teal', value: '#14b8a6' },
+                        { name: 'Blue', value: '#3b82f6' },
+                        { name: 'Purple', value: '#8b5cf6' },
+                        { name: 'Pink', value: '#ec4899' },
+                      ].map((color) => (
+                        <button
+                          key={color.name}
+                          type="button"
+                          title={color.name}
+                          className={`w-7 h-7 rounded-full border-2 transition-all ${
+                            (field.value || '') === color.value
+                              ? 'border-foreground scale-110 ring-2 ring-primary/30'
+                              : 'border-muted hover:border-foreground/50'
+                          }`}
+                          style={{
+                            backgroundColor: color.value || 'var(--primary)',
+                          }}
+                          onClick={() => field.onChange(color.value || undefined)}
+                        />
+                      ))}
+                    </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -760,8 +862,8 @@ export default function AddEventDialog({
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <RecurringEventSettings 
-                    form={form} 
+                  <RecurringEventSettings
+                    form={form}
                     showRecurring={showRecurring}
                     setShowRecurring={setShowRecurring}
                   />
@@ -772,27 +874,17 @@ export default function AddEventDialog({
             <DialogFooter className="flex justify-between gap-2">
               <div className="flex gap-2">
                 {editEvent && (
-                  <Button 
-                    type="button" 
-                    variant="destructive"
-                    onClick={handleDelete}
-                  >
+                  <Button type="button" variant="destructive" onClick={handleDelete}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </Button>
                 )}
               </div>
               <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => onOpenChange(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editEvent ? 'Update' : 'Create'} Event
-                </Button>
+                <Button type="submit">{editEvent ? 'Update' : 'Create'} Event</Button>
               </div>
             </DialogFooter>
           </form>
@@ -833,4 +925,4 @@ export default function AddEventDialog({
       />
     </Dialog>
   );
-} 
+}

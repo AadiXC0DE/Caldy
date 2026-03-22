@@ -1,11 +1,8 @@
 'use client';
 
+import React from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 
-export default function TasksLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
-} 
+}

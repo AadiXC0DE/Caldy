@@ -15,7 +15,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +55,7 @@ type ViewFormValues = z.infer<typeof viewFormSchema>;
 export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskViewsDialogProps) {
   const { taskViews, addTaskView, updateTaskView, deleteTaskView, categories } = useApp();
   const [editingViewId, setEditingViewId] = useState<string | null>(null);
-  
+
   const defaultValues: ViewFormValues = {
     name: '',
     filterPriority: 'all',
@@ -58,46 +64,49 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
     sortBy: 'dueDate',
     sortDirection: 'asc',
   };
-  
+
   const form = useForm<ViewFormValues>({
     resolver: zodResolver(viewFormSchema),
     defaultValues,
   });
-  
+
   const onSubmit = (data: ViewFormValues) => {
     // Convert the form data to the TaskView format
     const viewData: Omit<TaskView, 'id'> = {
       name: data.name,
       filters: {
-        priority: data.filterPriority === 'all' ? undefined : data.filterPriority as Priority,
+        priority: data.filterPriority === 'all' ? undefined : (data.filterPriority as Priority),
         category: data.filterCategory === 'all' ? undefined : data.filterCategory,
-        completed: data.filterCompleted === 'all' ? undefined : data.filterCompleted as 'completed' | 'incomplete',
+        completed:
+          data.filterCompleted === 'all'
+            ? undefined
+            : (data.filterCompleted as 'completed' | 'incomplete'),
       },
       sortBy: data.sortBy as 'dueDate' | 'priority' | 'title' | 'createdAt' | 'order' | 'progress',
       sortDirection: data.sortDirection as 'asc' | 'desc',
     };
-    
+
     if (editingViewId) {
       updateTaskView(editingViewId, viewData);
       toast.success('View updated successfully');
     } else {
       const newId = addTaskView(viewData);
       toast.success('View created successfully');
-      
+
       // If the consumer provided an onViewSelected callback, call it
       if (onViewSelected) {
         onViewSelected(newId);
       }
     }
-    
+
     // Reset form and editing state
     form.reset(defaultValues);
     setEditingViewId(null);
   };
-  
+
   const handleEditView = (view: TaskView) => {
     setEditingViewId(view.id);
-    
+
     form.reset({
       name: view.name,
       filterPriority: view.filters.priority || 'all',
@@ -107,30 +116,30 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
       sortDirection: view.sortDirection,
     });
   };
-  
+
   const handleDeleteView = (viewId: string) => {
     deleteTaskView(viewId);
     toast.success('View deleted successfully');
-    
+
     // If we were editing this view, reset the form
     if (editingViewId === viewId) {
       form.reset(defaultValues);
       setEditingViewId(null);
     }
   };
-  
+
   const handleSelectView = (viewId: string) => {
     if (onViewSelected) {
       onViewSelected(viewId);
       onOpenChange(false);
     }
   };
-  
+
   const handleCancelEdit = () => {
     form.reset(defaultValues);
     setEditingViewId(null);
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -140,49 +149,54 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
             Create and manage custom views to quickly filter and sort your tasks
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid md:grid-cols-5 gap-4">
           {/* List of existing views */}
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-sm font-medium">Your Views</h3>
-            
+
             <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
               {taskViews.length > 0 ? (
-                taskViews.map(view => (
-                  <Card key={view.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                taskViews.map((view) => (
+                  <Card
+                    key={view.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
                     <CardHeader className="p-3">
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-base" onClick={() => handleSelectView(view.id)}>
                           {view.name}
                         </CardTitle>
                         <div className="flex items-center space-x-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
                             onClick={() => handleEditView(view)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 text-destructive" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
                             onClick={() => handleDeleteView(view.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {(view.filters.priority || view.filters.category || view.filters.completed) && (
+                        {(view.filters.priority ||
+                          view.filters.category ||
+                          view.filters.completed) && (
                           <div className="flex items-center text-xs text-muted-foreground">
                             <Filter className="h-3 w-3 mr-1" />
                             Filtered
                           </div>
                         )}
-                        
+
                         <div className="flex items-center text-xs text-muted-foreground ml-auto">
                           Sort: {view.sortBy}
                           {view.sortDirection === 'asc' ? (
@@ -196,19 +210,17 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No custom views yet
-                </div>
+                <div className="text-center py-8 text-muted-foreground">No custom views yet</div>
               )}
             </div>
           </div>
-          
+
           {/* Form to create/edit views */}
           <div className="md:col-span-3 border rounded-lg p-4">
             <h3 className="text-sm font-medium mb-4">
               {editingViewId ? 'Edit View' : 'Create New View'}
             </h3>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -224,7 +236,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -248,7 +260,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="filterCategory"
@@ -263,7 +275,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="all">All Categories</SelectItem>
-                            {categories.map(category => (
+                            {categories.map((category) => (
                               <SelectItem key={category.id} value={category.id}>
                                 {category.name}
                               </SelectItem>
@@ -274,7 +286,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="filterCompleted"
@@ -296,7 +308,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -321,7 +333,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="sortDirection"
@@ -343,7 +355,7 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
                     )}
                   />
                 </div>
-                
+
                 <DialogFooter className="mt-6 gap-2">
                   {editingViewId && (
                     <Button type="button" variant="outline" onClick={handleCancelEdit}>
@@ -362,4 +374,4 @@ export function TaskViewsDialog({ open, onOpenChange, onViewSelected }: TaskView
       </DialogContent>
     </Dialog>
   );
-} 
+}
