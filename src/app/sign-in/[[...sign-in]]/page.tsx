@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SignIn } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 import { CalendarDays, CheckCircle2, Cloud, ShieldCheck } from 'lucide-react';
 
 const benefits = [
@@ -9,6 +10,10 @@ const benefits = [
 ];
 
 export default function Page() {
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith('pk_')) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 opacity-[0.03] [background-image:linear-gradient(to_right,var(--foreground)_1px,transparent_1px),linear-gradient(to_bottom,var(--foreground)_1px,transparent_1px)] [background-size:72px_72px]" />
