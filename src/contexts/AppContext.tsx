@@ -318,8 +318,7 @@ function collapseLegacyPlaceholderNotes(notes: Note[]) {
   }
 
   const [keep] = [...placeholderNotes].sort(
-    (left, right) =>
-      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+    (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
 
   return notes.filter((note) => !isLegacyPlaceholderNote(note) || note.id === keep.id);
@@ -454,16 +453,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (showFestivalsSetting !== undefined) setShowFestivals(showFestivalsSetting);
 
         // Load iCal events and festivals if cached
-        const [dbICalEvents, dbFestivals, dbCalendarSources, dbSearchDocuments, dbMailAccounts, dbMailThreads, dbMailMessages] =
-          await Promise.all([
-            dbOps.getAllImportedCalendarEvents(),
-            dbOps.getAllFestivals(),
-            dbOps.getAllCalendarSources(),
-            dbOps.getAllSearchDocuments(),
-            dbOps.getAllMailAccounts(),
-            dbOps.getAllMailThreads(),
-            dbOps.getAllMailMessages(),
-          ]);
+        const [
+          dbICalEvents,
+          dbFestivals,
+          dbCalendarSources,
+          dbSearchDocuments,
+          dbMailAccounts,
+          dbMailThreads,
+          dbMailMessages,
+        ] = await Promise.all([
+          dbOps.getAllImportedCalendarEvents(),
+          dbOps.getAllFestivals(),
+          dbOps.getAllCalendarSources(),
+          dbOps.getAllSearchDocuments(),
+          dbOps.getAllMailAccounts(),
+          dbOps.getAllMailThreads(),
+          dbOps.getAllMailMessages(),
+        ]);
 
         if (dbICalEvents.length > 0) {
           setIcalEvents(dbICalEvents);
@@ -708,7 +714,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       toast.success(
-        enabledSources.length > 1 ? 'Calendars refreshed successfully' : 'Calendar imported successfully',
+        enabledSources.length > 1
+          ? 'Calendars refreshed successfully'
+          : 'Calendar imported successfully',
       );
     } catch (error) {
       console.error('Error fetching iCal data:', error);
@@ -846,7 +854,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: event.description,
         section: event.sourceName || 'Imported calendar',
         type: 'imported-event' as const,
-        keywords: uniqueStrings([event.location || '', event.providerLabel || '', event.sourceName || '']),
+        keywords: uniqueStrings([
+          event.location || '',
+          event.providerLabel || '',
+          event.sourceName || '',
+        ]),
         url: `/calendar?event=${event.id}&date=${new Date(event.start).toISOString().slice(0, 10)}`,
         updatedAt: new Date(event.end || event.start),
       })),
@@ -1408,7 +1420,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const archiveNote = (id: string) => {
     setNotes((prev) =>
       prev.map((note) =>
-        note.id === id ? normalizeNote({ ...note, archivedAt: new Date(), updatedAt: new Date() }) : note,
+        note.id === id
+          ? normalizeNote({ ...note, archivedAt: new Date(), updatedAt: new Date() })
+          : note,
       ),
     );
   };
@@ -1417,7 +1431,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotes((prev) =>
       prev.map((note) =>
         note.id === id
-          ? normalizeNote({ ...note, archivedAt: undefined, deletedAt: undefined, updatedAt: new Date() })
+          ? normalizeNote({
+              ...note,
+              archivedAt: undefined,
+              deletedAt: undefined,
+              updatedAt: new Date(),
+            })
           : note,
       ),
     );
@@ -1472,13 +1491,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: thread.id || `thread-${index + 1}`,
         accountId,
         subject: thread.subject || latestMessage?.subject || 'Imported thread',
-        participants: thread.participants || uniqueStrings(threadMessages.flatMap((message) => [message.from, ...message.to])),
+        participants:
+          thread.participants ||
+          uniqueStrings(threadMessages.flatMap((message) => [message.from, ...message.to])),
         preview: thread.preview || latestMessage?.preview || '',
         labels: thread.labels || [],
-        latestMessageAt: thread.latestMessageAt ? new Date(thread.latestMessageAt) : new Date(latestMessage?.sentAt || Date.now()),
+        latestMessageAt: thread.latestMessageAt
+          ? new Date(thread.latestMessageAt)
+          : new Date(latestMessage?.sentAt || Date.now()),
         unreadCount:
-          thread.unreadCount ??
-          threadMessages.filter((message) => !message.isRead).length,
+          thread.unreadCount ?? threadMessages.filter((message) => !message.isRead).length,
         isArchived: Boolean(thread.isArchived),
         isPinned: Boolean(thread.isPinned),
         messageIds: thread.messageIds || threadMessages.map((message) => message.id),
@@ -1486,18 +1508,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setMailAccounts((prev) => [...prev.filter((entry) => entry.id !== account.id), account]);
-    setMailMessages((prev) => [...prev.filter((message) => message.accountId !== account.id), ...messages]);
-    setMailThreads((prev) => [...prev.filter((thread) => thread.accountId !== account.id), ...threads]);
+    setMailMessages((prev) => [
+      ...prev.filter((message) => message.accountId !== account.id),
+      ...messages,
+    ]);
+    setMailThreads((prev) => [
+      ...prev.filter((thread) => thread.accountId !== account.id),
+      ...threads,
+    ]);
 
     return { accountId: account.id, threadCount: threads.length };
   };
 
   const markMailThreadRead = (threadId: string, read: boolean) => {
     setMailThreads((prev) =>
-      prev.map((thread) => (thread.id === threadId ? { ...thread, unreadCount: read ? 0 : Math.max(thread.unreadCount, 1) } : thread)),
+      prev.map((thread) =>
+        thread.id === threadId
+          ? { ...thread, unreadCount: read ? 0 : Math.max(thread.unreadCount, 1) }
+          : thread,
+      ),
     );
     setMailMessages((prev) =>
-      prev.map((message) => (message.threadId === threadId ? { ...message, isRead: read } : message)),
+      prev.map((message) =>
+        message.threadId === threadId ? { ...message, isRead: read } : message,
+      ),
     );
   };
 

@@ -263,7 +263,9 @@ function HabitsPageClient() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Activity Heatmap</CardTitle>
-              <CardDescription>See how consistent your habits have been over the last 13 weeks.</CardDescription>
+              <CardDescription>
+                See how consistent your habits have been over the last 13 weeks.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

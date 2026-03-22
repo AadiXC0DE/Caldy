@@ -102,8 +102,7 @@ export function SearchBar() {
     if (!deferredQuery) {
       return [...searchDocuments]
         .sort((left, right) => {
-          const priorityDelta =
-            (TYPE_ORDER[left.type] ?? 99) - (TYPE_ORDER[right.type] ?? 99);
+          const priorityDelta = (TYPE_ORDER[left.type] ?? 99) - (TYPE_ORDER[right.type] ?? 99);
           if (priorityDelta !== 0) return priorityDelta;
           return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
         })
@@ -137,8 +136,7 @@ export function SearchBar() {
       .sort((left, right) => {
         if (right.score !== left.score) return right.score - left.score;
         return (
-          new Date(right.document.updatedAt).getTime() -
-          new Date(left.document.updatedAt).getTime()
+          new Date(right.document.updatedAt).getTime() - new Date(left.document.updatedAt).getTime()
         );
       })
       .slice(0, 24)
@@ -180,8 +178,7 @@ export function SearchBar() {
           Search everything
         </span>
         <span className="hidden items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground/70 sm:inline-flex">
-          <Command className="h-3 w-3" />
-          K
+          <Command className="h-3 w-3" />K
         </span>
       </Button>
 

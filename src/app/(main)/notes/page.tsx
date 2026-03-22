@@ -343,7 +343,7 @@ function NotesPageClient() {
                         {note.isDailyNote ? <Badge variant="secondary">Daily</Badge> : null}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {(note.folder || 'Workspace')} · {format(new Date(note.updatedAt), 'MMM d')}
+                        {note.folder || 'Workspace'} · {format(new Date(note.updatedAt), 'MMM d')}
                       </p>
                     </div>
                     {note.pinned ? <Pin className="mt-0.5 h-4 w-4 text-primary" /> : null}
@@ -419,7 +419,9 @@ function NotesPageClient() {
 
               <div
                 className="flex-1 px-5 py-5"
-                style={{ background: `linear-gradient(180deg, ${selectedNote.color}35 0%, transparent 28%)` }}
+                style={{
+                  background: `linear-gradient(180deg, ${selectedNote.color}35 0%, transparent 28%)`,
+                }}
               >
                 {editorMode === 'write' ? (
                   <Textarea
@@ -443,7 +445,8 @@ function NotesPageClient() {
               <StickyNote className="h-10 w-10 text-muted-foreground/40" />
               <h2 className="text-xl font-semibold">Choose a note or start a new one</h2>
               <p className="max-w-md text-sm leading-6 text-muted-foreground">
-                Keep ideas, daily notes, and work context in one calmer space instead of a crowded board of controls.
+                Keep ideas, daily notes, and work context in one calmer space instead of a crowded
+                board of controls.
               </p>
             </div>
           )}
@@ -628,7 +631,9 @@ function NotesPageClient() {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      selectedNote.archivedAt ? restoreNote(selectedNote.id) : archiveNote(selectedNote.id)
+                      selectedNote.archivedAt
+                        ? restoreNote(selectedNote.id)
+                        : archiveNote(selectedNote.id)
                     }
                     className="w-full rounded-2xl"
                   >

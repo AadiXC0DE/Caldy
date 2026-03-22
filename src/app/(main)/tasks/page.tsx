@@ -24,7 +24,12 @@ import TaskDetailDialog from '@/components/tasks/TaskDetailDialog';
 import { TaskStats } from '@/components/tasks/TaskStats';
 import { PageHeader } from '@/components/layout/PageHeader';
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { TaskViewsDialog } from '@/components/tasks/TaskViewsDialog';
 
@@ -142,64 +147,82 @@ function TasksPageClient() {
 
   const headerSection = useMemo(
     () => (
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <PageHeader
           title="Tasks"
           description={
             <>
-              <p>Plan, triage, and execute without piling filters and controls on top of the work itself.</p>
+              <p>
+                Plan, triage, and execute without piling filters and controls on top of the work
+                itself.
+              </p>
               <p className="text-xs text-muted-foreground">
-                {basicStats.completed}/{basicStats.total} completed · {basicStats.progress}% complete
+                {basicStats.completed}/{basicStats.total} completed · {basicStats.progress}%
+                complete
               </p>
             </>
           }
           actions={
             <>
               <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-2xl">
-                  <span className="mr-1">
-                    {mounted && activeTaskView
-                      ? taskViews.find((v) => v.id === activeTaskView)?.name || 'All Tasks'
-                      : 'All Tasks'}
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActiveTaskView(null);
-                    setFilterPriority('all');
-                    setFilterCategory('all');
-                    setFilterCompleted('all');
-                    setSearchTerm('');
-                  }}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-2xl">
+                      <span className="mr-1">
+                        {mounted && activeTaskView
+                          ? taskViews.find((v) => v.id === activeTaskView)?.name || 'All Tasks'
+                          : 'All Tasks'}
+                      </span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setActiveTaskView(null);
+                        setFilterPriority('all');
+                        setFilterCategory('all');
+                        setFilterCompleted('all');
+                        setSearchTerm('');
+                      }}
+                    >
+                      All Tasks
+                    </DropdownMenuItem>
+                    {taskViewItems}
+                    <Separator className="my-1" />
+                    <DropdownMenuItem onSelect={() => setIsViewsDialogOpen(true)}>
+                      Manage views...
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button
+                  onClick={() => setShowFilters(!showFilters)}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-2xl"
                 >
-                  All Tasks
-                </DropdownMenuItem>
-                {taskViewItems}
-                <Separator className="my-1" />
-                <DropdownMenuItem onSelect={() => setIsViewsDialogOpen(true)}>
-                  Manage views...
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Filter className="h-4 w-4 mr-1" />
+                  Filters
+                </Button>
 
-            <Button onClick={() => setShowFilters(!showFilters)} variant="outline" size="sm" className="rounded-2xl">
-              <Filter className="h-4 w-4 mr-1" />
-              Filters
-            </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsViewsDialogOpen(true)}
+                  className="rounded-2xl"
+                >
+                  Manage Views
+                </Button>
 
-            <Button variant="outline" size="sm" onClick={() => setIsViewsDialogOpen(true)} className="rounded-2xl">
-              Manage Views
-            </Button>
-
-            <Button onClick={handleAddTaskOpen} className="rounded-2xl">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
+                <Button onClick={handleAddTaskOpen} className="rounded-2xl">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  New Task
+                </Button>
               </div>
             </>
           }

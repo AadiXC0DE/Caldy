@@ -179,7 +179,9 @@ function FocusPageClient() {
       <div className="grid gap-4 md:grid-cols-3 md:gap-6">
         {/* Timer Column */}
         <div className="md:col-span-2">
-          <Card className={`overflow-hidden border shadow-sm transition-colors duration-500 ${currentSession.bg}`}>
+          <Card
+            className={`overflow-hidden border shadow-sm transition-colors duration-500 ${currentSession.bg}`}
+          >
             <CardContent className="flex flex-col items-center py-12">
               {/* Session Label */}
               <motion.div
@@ -289,7 +291,9 @@ function FocusPageClient() {
           {/* Task Selector */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em]">Link to Task</CardTitle>
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em]">
+                Link to Task
+              </CardTitle>
               <CardDescription>Optionally connect this session to one active task.</CardDescription>
             </CardHeader>
             <CardContent>

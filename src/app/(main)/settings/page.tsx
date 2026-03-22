@@ -52,7 +52,9 @@ function AccountStateText() {
   return (
     <>
       <p className="mt-2 text-sm text-muted-foreground">
-        {isSignedIn ? user?.primaryEmailAddress?.emailAddress || 'Signed in' : 'Running in local mode'}
+        {isSignedIn
+          ? user?.primaryEmailAddress?.emailAddress || 'Signed in'
+          : 'Running in local mode'}
       </p>
       <Badge variant="secondary" className="mt-3 rounded-full">
         {isSignedIn ? 'Account ready' : 'Local-first'}
@@ -179,13 +181,15 @@ function SettingsPageClient() {
               <div className="rounded-2xl border bg-card/70 p-4">
                 <p className="font-medium">Local-first by default</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Your workspace lives on this device first. Export remains your reliable backup path today.
+                  Your workspace lives on this device first. Export remains your reliable backup
+                  path today.
                 </p>
               </div>
               <div className="rounded-2xl border bg-card/70 p-4">
                 <p className="font-medium">Pro stays additive</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Pro is for continuity, encrypted backup, sync, and premium depth, not basic usefulness.
+                  Pro is for continuity, encrypted backup, sync, and premium depth, not basic
+                  usefulness.
                 </p>
               </div>
               <div className="rounded-2xl border bg-card/70 p-4">
@@ -243,7 +247,13 @@ function SettingsPageClient() {
                 <Badge variant="outline" className="rounded-full px-3 py-1">
                   {icalEvents.length} imported events
                 </Badge>
-                <Button variant="outline" size="sm" onClick={refreshIcalEvents} disabled={isLoadingIcal} className="rounded-2xl">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshIcalEvents}
+                  disabled={isLoadingIcal}
+                  className="rounded-2xl"
+                >
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Refresh all
                 </Button>
@@ -256,13 +266,21 @@ function SettingsPageClient() {
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-3">
-                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: source.color }} />
+                            <span
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: source.color }}
+                            />
                             <p className="truncate font-medium">{source.name}</p>
-                            <Badge variant={source.enabled ? 'secondary' : 'outline'} className="rounded-full">
+                            <Badge
+                              variant={source.enabled ? 'secondary' : 'outline'}
+                              className="rounded-full"
+                            >
                               {source.enabled ? 'Enabled' : 'Paused'}
                             </Badge>
                           </div>
-                          <p className="mt-2 truncate text-sm text-muted-foreground">{source.url}</p>
+                          <p className="mt-2 truncate text-sm text-muted-foreground">
+                            {source.url}
+                          </p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {source.lastSyncedAt
                               ? `Last refreshed ${new Date(source.lastSyncedAt).toLocaleString()}`
@@ -278,7 +296,9 @@ function SettingsPageClient() {
                           <Input
                             type="color"
                             value={source.color}
-                            onChange={(event) => updateCalendarSource(source.id, { color: event.target.value })}
+                            onChange={(event) =>
+                              updateCalendarSource(source.id, { color: event.target.value })
+                            }
                             className="h-10 w-16 rounded-2xl"
                           />
                           <Button
@@ -305,7 +325,8 @@ function SettingsPageClient() {
                   ))
                 ) : (
                   <div className="rounded-2xl border border-dashed p-5 text-sm text-muted-foreground">
-                    Add one or more iCal feeds to layer work, personal, and subscription calendars into one view.
+                    Add one or more iCal feeds to layer work, personal, and subscription calendars
+                    into one view.
                   </div>
                 )}
               </div>
@@ -326,7 +347,8 @@ function SettingsPageClient() {
                   <div className="min-w-0">
                     <p className="font-medium">Show public holidays</p>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      Overlay a local holiday layer on the calendar so important public dates stay visible without crowding the main schedule.
+                      Overlay a local holiday layer on the calendar so important public dates stay
+                      visible without crowding the main schedule.
                     </p>
                   </div>
                 </div>
@@ -418,7 +440,8 @@ function SettingsPageClient() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl border bg-card/70 p-4 text-sm text-muted-foreground">
-                Export keeps the current local-first product safe and portable. Import restores a backup into this browser profile.
+                Export keeps the current local-first product safe and portable. Import restores a
+                backup into this browser profile.
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button variant="outline" onClick={handleExport} className="rounded-2xl">
@@ -428,7 +451,12 @@ function SettingsPageClient() {
                 <label className="inline-flex cursor-pointer items-center justify-center rounded-2xl border px-4 py-2 text-sm font-medium hover:bg-accent">
                   <Upload className="mr-2 h-4 w-4" />
                   {isImporting ? 'Importing...' : 'Import backup'}
-                  <input type="file" accept="application/json" onChange={handleImport} className="hidden" />
+                  <input
+                    type="file"
+                    accept="application/json"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
                 </label>
               </div>
             </CardContent>

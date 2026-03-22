@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+  CardDescription,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
 import { CalendarDays, CheckSquare, Clock, BellRing, AlarmClock, Plus } from 'lucide-react';
@@ -215,8 +222,14 @@ function DashboardPageClient() {
           const urgency =
             days <= 1 ? 'text-red-500' : days <= 3 ? 'text-yellow-500' : 'text-green-500';
           return (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <Card className={`overflow-hidden border-l-4 ${days <= 1 ? 'border-l-red-500' : days <= 3 ? 'border-l-yellow-500' : 'border-l-green-500'}`}>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <Card
+                className={`overflow-hidden border-l-4 ${days <= 1 ? 'border-l-red-500' : days <= 3 ? 'border-l-yellow-500' : 'border-l-green-500'}`}
+              >
                 <CardContent className="flex items-center justify-between py-4 px-4">
                   <div className="flex items-center gap-3">
                     <AlarmClock className={`h-5 w-5 ${urgency}`} />
@@ -311,8 +324,16 @@ function DashboardPageClient() {
           </Card>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }}>
-          <Tabs value={taskView} onValueChange={(value) => setTaskView(value as keyof typeof taskViewMeta)} className="h-full">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Tabs
+            value={taskView}
+            onValueChange={(value) => setTaskView(value as keyof typeof taskViewMeta)}
+            className="h-full"
+          >
             <TabsList className="mb-4 grid w-full grid-cols-3 rounded-xl bg-muted/60 p-1">
               <TabsTrigger value="today">Today</TabsTrigger>
               <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
@@ -320,9 +341,7 @@ function DashboardPageClient() {
             </TabsList>
 
             <Card className="flex h-full flex-col overflow-hidden">
-              <CardHeader className="pb-3">
-                {renderTaskViewHeader(taskView)}
-              </CardHeader>
+              <CardHeader className="pb-3">{renderTaskViewHeader(taskView)}</CardHeader>
 
               <CardContent className="flex-grow">
                 <TabsContent value="today" className="h-[50vh] overflow-auto mt-0">
