@@ -1,6 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -233,6 +241,29 @@ const defaultPomodoroSettings = {
   longBreakInterval: 4,
 };
 
+function buildImportedEventId(
+  sourceId: string | undefined,
+  event: Pick<ImportedCalendarEvent, 'id' | 'title' | 'start'>,
+) {
+  if (!sourceId) {
+    return event.id;
+  }
+
+  if (event.id.startsWith(`${sourceId}::`)) {
+    return event.id;
+  }
+
+  const fallbackId = event.id || `${event.title}-${new Date(event.start).toISOString()}`;
+  return `${sourceId}::${fallbackId}`;
+}
+
+function normalizeImportedCalendarEvent(event: ImportedCalendarEvent): ImportedCalendarEvent {
+  return {
+    ...event,
+    id: buildImportedEventId(event.sourceId, event),
+  };
+}
+
 const DEFAULT_NOTE_FOLDER = 'Workspace';
 const DAILY_NOTE_FOLDER = 'Daily Notes';
 const LEGACY_DEFAULT_NOTE_CONTENT = `# Untitled note
@@ -330,6 +361,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Database loading state
   const [isLoading, setIsLoading] = useState(true);
   const isInitialized = useRef(false);
+  const calendarSourcesRef = useRef<CalendarSource[]>([]);
+  const icalEventsWriteQueueRef = useRef(Promise.resolve());
+  const calendarSourcesWriteQueueRef = useRef(Promise.resolve());
 
   // Initialize state with default values (will be populated from DB)
   const [events, setEvents] = useState<Event[]>([]);
@@ -377,6 +411,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [showConfetti, setShowConfetti] = useState(false);
 
   // Fetch available countries on initial load
+  useEffect(() => {
+    calendarSourcesRef.current = calendarSources;
+  }, [calendarSources]);
+
   useEffect(() => {
     const fetchCountries = async () => {
       try {
@@ -472,7 +510,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
 
         if (dbICalEvents.length > 0) {
-          setIcalEvents(dbICalEvents);
+          setIcalEvents(dbICalEvents.map(normalizeImportedCalendarEvent));
         }
 
         if (dbFestivals.length > 0) {
@@ -580,12 +618,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (!isInitialized.current) return;
-    dbOps.setImportedCalendarEvents(icalEvents);
+    const snapshot = icalEvents.map(normalizeImportedCalendarEvent);
+    icalEventsWriteQueueRef.current = icalEventsWriteQueueRef.current
+      .catch(() => undefined)
+      .then(() => dbOps.setImportedCalendarEvents(snapshot));
   }, [icalEvents]);
 
   useEffect(() => {
     if (!isInitialized.current) return;
-    dbOps.setCalendarSources(calendarSources);
+    const snapshot = [...calendarSources];
+    calendarSourcesWriteQueueRef.current = calendarSourcesWriteQueueRef.current
+      .catch(() => undefined)
+      .then(() => dbOps.setCalendarSources(snapshot));
   }, [calendarSources]);
 
   useEffect(() => {
@@ -646,29 +690,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     dbOps.setMailMessages(mailMessages).catch((e) => console.error(e));
   }, [mailMessages]);
 
-  const refreshCalendarSource = useCallback(
-    async (sourceId: string) => {
-      const source = calendarSources.find((entry) => entry.id === sourceId);
-      if (!source || !source.enabled) return;
+  const refreshCalendarSource = useCallback(async (sourceId: string) => {
+    const source = calendarSourcesRef.current.find((entry) => entry.id === sourceId);
+    if (!source || !source.enabled) return;
 
-      const response = await fetch('/api/fetch-ical', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: source.url }),
-      });
+    const response = await fetch('/api/fetch-ical', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url: source.url }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: 'Failed to fetch iCal data' }));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch iCal data' }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
 
-      const data = await response.json();
-      const mappedEvents: ImportedCalendarEvent[] = (data.events || []).map(
-        (event: ImportedCalendarEvent) => ({
+    const data = await response.json();
+    const mappedEvents: ImportedCalendarEvent[] = (data.events || []).map(
+      (event: ImportedCalendarEvent) =>
+        normalizeImportedCalendarEvent({
           ...event,
           sourceId: source.id,
           sourceName: source.name,
@@ -676,31 +718,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           color: event.color || source.color,
           isImported: true,
         }),
-      );
+    );
 
-      setIcalEvents((prev) => {
-        const remaining = prev.filter((event) => event.sourceId !== source.id);
-        return [...remaining, ...mappedEvents];
-      });
+    setIcalEvents((prev) => {
+      const remaining = prev.filter((event) => event.sourceId !== source.id);
+      return [...remaining, ...mappedEvents];
+    });
 
-      setCalendarSources((prev) =>
-        prev.map((entry) =>
-          entry.id === source.id
-            ? {
-                ...entry,
-                lastSyncedAt: new Date(),
-                lastError: undefined,
-                updatedAt: new Date(),
-              }
-            : entry,
-        ),
-      );
-    },
-    [calendarSources],
-  );
+    setCalendarSources((prev) =>
+      prev.map((entry) =>
+        entry.id === source.id
+          ? {
+              ...entry,
+              lastSyncedAt: new Date(),
+              lastError: undefined,
+            }
+          : entry,
+      ),
+    );
+  }, []);
 
   const refreshIcalEvents = useCallback(async () => {
-    if (!calendarSources.length) {
+    const sources = calendarSourcesRef.current;
+
+    if (!sources.length) {
       setIcalEvents([]);
       return;
     }
@@ -708,7 +749,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoadingIcal(true);
 
     try {
-      const enabledSources = calendarSources.filter((source) => source.enabled);
+      const enabledSources = sources.filter((source) => source.enabled);
       for (const source of enabledSources) {
         await refreshCalendarSource(source.id);
       }
@@ -724,7 +765,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoadingIcal(false);
     }
-  }, [calendarSources, refreshCalendarSource]);
+  }, [refreshCalendarSource]);
 
   const setIcalUrl = useCallback((url: string | null) => {
     setIcalUrlState(url);
@@ -782,11 +823,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [calendarSources, icalUrl]);
 
+  const calendarAutoRefreshKey = useMemo(
+    () =>
+      calendarSources
+        .filter((source) => source.enabled)
+        .map((source) => `${source.id}:${source.url}:${source.enabled}`)
+        .sort()
+        .join('|'),
+    [calendarSources],
+  );
+
   useEffect(() => {
-    if (calendarSources.some((source) => source.enabled)) {
+    if (calendarAutoRefreshKey) {
       refreshIcalEvents();
     }
-  }, [calendarSources, refreshIcalEvents]);
+  }, [calendarAutoRefreshKey, refreshIcalEvents]);
 
   // Function to fetch and refresh festivals
   const refreshFestivals = useCallback(async () => {
@@ -1010,7 +1061,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const removeCalendarSource = (id: string) => {
-    setCalendarSources((prev) => prev.filter((source) => source.id !== id));
+    const remainingSources = calendarSourcesRef.current.filter((source) => source.id !== id);
+    setCalendarSources(remainingSources);
+    setIcalUrlState(remainingSources[0]?.url || null);
     setIcalEvents((prev) => prev.filter((event) => event.sourceId !== id));
   };
 
