@@ -419,14 +419,16 @@ function CalendarViewClient({ showHeader = true }) {
       start: event.start,
       end: event.end,
       allDay: event.allDay,
-      backgroundColor: '#3788d8', // Default color for imported events
-      borderColor: '#3788d8',
+      backgroundColor: event.color || '#3788d8',
+      borderColor: event.color || '#3788d8',
       classNames: ['ical-event'],
       editable: false, // iCal events can't be edited
       extendedProps: {
         description: event.description,
         location: event.location,
         isIcalEvent: true,
+        sourceId: event.sourceId,
+        sourceName: event.sourceName,
       },
     };
   });
